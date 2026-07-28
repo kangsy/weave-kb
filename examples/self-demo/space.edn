@@ -1,0 +1,4 @@
+{:space "self-demo"
+ :description "Self-demo: weave projected onto its own whitepaper. The whitepaper's §5.4/§6.1 evidence — public, reproducible, no private data."
+ :engine {:name "weave" :repo "https://github.com/kangsy/weave-kb"}
+ :ambient {:always []}}

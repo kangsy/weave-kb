@@ -1,0 +1,8 @@
+{
+  "name": "weave",
+  "version": "0.1.0",
+  "description": "Self-structuring knowledge base + tracker over an EAV substrate. Project any corpus into faithful facts, then surface grounded tensions and insights. Ships two skills (weave-ingest, weave-insight) that drive your Claude Code; the deterministic engine (`weave`) provides views + coherence checks.",
+  "author": "kangsy",
+  "homepage": "https://github.com/kangsy/weave-kb",
+  "skills": ["skills/weave-ingest", "skills/weave-insight"]
+}

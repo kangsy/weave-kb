@@ -1,0 +1,627 @@
+#!/usr/bin/env bb
+;; weave — the engine CLI (domain-agnostic, stateless).
+;; Operates on a Weave *space*: an opaque store (today a directory with
+;; projection/ + journal/ + space.edn; a DB backend could slot in behind the
+;; load-* functions). The space is RESOLVED, never assumed from cwd, so weave
+;; works from anywhere.
+;;
+;;   weave register <path>          set the default space (machine-local config)
+;;   weave where                    show the resolved space
+;;   weave overview                 context-aware "what can I do now"
+;;   weave topics                   subject-centric: what's tracked (hierarchy)
+;;   weave check                    coherence / invariant checks
+;;   weave divergence <dirA> <dirB> contrast two projections
+;;
+;; Space resolution precedence:  --space  >  $WEAVE_SPACE  >  config default  >
+;;                               nearest space.edn walking up from cwd.
+
+(require '[clojure.edn :as edn]
+         '[clojure.string :as str]
+         '[clojure.set :as set]
+         '[clojure.java.io :as io])
+(import '[java.time LocalDate]
+        '[java.time.temporal ChronoUnit])
+
+(defn slurp-edn [f] (edn/read-string (slurp (io/file f))))
+
+;; --- arg parsing + space resolution -----------------------------------------
+(defn- extract-flag [args flag]
+  (loop [a args v nil out []]
+    (cond (empty? a)        [v out]
+          (= (first a) flag) (recur (drop 2 a) (second a) out)
+          :else              (recur (rest a) v (conj out (first a))))))
+
+(def ^:private cfg-file
+  (io/file (or (System/getenv "XDG_CONFIG_HOME")
+               (io/file (System/getProperty "user.home") ".config"))
+           "weave" "config.edn"))
+
+(defn- read-config [] (when (.exists cfg-file) (slurp-edn cfg-file)))
+
+(defn- find-up [start fname]
+  (loop [d (.getAbsoluteFile (io/file start))]
+    (when d
+      (if (.exists (io/file d fname)) (.getPath d) (recur (.getParentFile d))))))
+
+(def ^:private parsed   (extract-flag *command-line-args* "--space"))
+(def ^:private cmd-args (second parsed))
+(def space
+  (or (first parsed)
+      (System/getenv "WEAVE_SPACE")
+      (:default-space (read-config))
+      (find-up (System/getProperty "user.dir") "space.edn")))
+
+(defn- need-space! []
+  (when-not space
+    (binding [*out* *err*]
+      (println "No space found. Register one:  weave register <path>")
+      (println "(or pass --space <path> / set $WEAVE_SPACE)"))
+    (System/exit 2)))
+
+;; --- store access (filesystem today; a DB would replace these) --------------
+(def config   (delay (try (slurp-edn (io/file space "space.edn")) (catch Exception _ {}))))
+(def register (delay (slurp-edn (io/file space "projection/register.edn"))))
+(def facts    (delay (:facts (slurp-edn (io/file space "projection/facts.edn")))))
+
+(defn- concept-by-id [] (into {} (map (juxt :id identity) (:concepts @register))))
+(defn- context-by-id [] (into {} (map (juxt :id identity) (:contexts @register))))
+(defn context-label [id] (or (:label ((context-by-id) id)) (str id)))
+
+(defn o [e a] (some (fn [[s p v]] (when (and (= s e) (= p a)) v)) @facts))
+(defn entities-with [a] (distinct (keep (fn [[s p _]] (when (= p a) s)) @facts)))
+
+;; --- Entitäts-Lifecycle & Labels (faktengetrieben; spec §3.1/§3.3) ----------
+(defn superseded-set
+  "Entity ids no longer current: split ancestors (object of :k/split-of) and
+   merged-away entities (subject of :k/merged-into)."
+  [fs]
+  (into #{} (concat (keep (fn [[_ p v]] (when (= p :k/split-of) v)) fs)
+                    (keep (fn [[s p _]] (when (= p :k/merged-into) s)) fs))))
+(def ^:private gone (delay (superseded-set @facts)))
+(defn current?  [e] (not (@gone e)))
+(defn topic?    [e] (and (keyword? e) (not (#{"action" "ctx" "artifact"} (namespace e)))))
+(defn ent-label [e] (or (o e :k/label) (name e)))
+(defn superseded-by
+  "Entities that superseded e (its split successors / merge target)."
+  [fs e]
+  (distinct (concat (keep (fn [[s p v]] (when (and (= p :k/split-of)    (= v e)) s)) fs)
+                    (keep (fn [[s p v]] (when (and (= p :k/merged-into) (= s e)) v)) fs))))
+
+;; --- Terminal-Styling (ANSI; nur bei echtem TTY; NO_COLOR/WEAVE_STYLE beachtet) ---
+(def ^:private styled?
+  (let [v (System/getenv "WEAVE_STYLE")]
+    (cond (= v "1") true
+          (= v "0") false
+          (System/getenv "NO_COLOR") false
+          :else (some? (System/console)))))
+(defn- sgr  [code s] (if styled? (str "\033[" code "m" s "\033[0m") s))
+(defn- bold [s] (sgr "1" s))
+(defn- dim  [s] (sgr "2" s))
+(defn- vis-len [s] (count (str/replace s #"\033\[[0-9;]*m" "")))   ;; sichtbare Breite ohne Escapes
+(defn- md->ansi [s]                                                ;; Inline-MD → ANSI, NUR bei TTY; sonst rohes Markdown 1:1
+  (if-not styled?
+    s                                                             ;; kein Terminal → Quelle unangetastet (kein lossy Filter)
+    (-> s
+        (str/replace #"\[([^\]]+)\]\(([^)]+)\)" (fn [m] (str (nth m 1) " " (dim (str "(" (nth m 2) ")")))))
+        (str/replace #"\*\*([^*]+)\*\*" (fn [m] (bold (nth m 1))))
+        (str/replace #"`([^`]+)`" (fn [m] (dim (nth m 1)))))))
+
+;; --- Layout-Helfer (geteilt von journal/recap) ------------------------------
+(def ^:private term-width (or (some-> (System/getenv "COLUMNS") parse-long) 88))
+(defn- wrap [p1 p2 text]                        ;; auf *sichtbare* Breite umbrechen; p2 = Folgezeilen-Prefix
+  (let [avail (max 20 (- term-width (count p1)))
+        cap   (fn [l] (if styled? (str l "\033[0m") l))]  ;; Style-Bleed über Zeilenende verhindern
+    (loop [ws (str/split (str/trim text) #"\s+") line "" out []]
+      (cond
+        (empty? ws) (conj out (cap (str (if (empty? out) p1 p2) line)))
+        (and (seq line) (> (vis-len (str line " " (first ws))) avail))
+        (recur ws "" (conj out (cap (str (if (empty? out) p1 p2) line))))
+        :else (recur (rest ws)
+                     (if (empty? line) (first ws) (str line " " (first ws)))
+                     out)))))
+(defn- rel-age [today ds]                       ;; "heute" / "vor 1 Tag" / "vor N Tagen"
+  (try (let [n (.between ChronoUnit/DAYS (LocalDate/parse ds) today)]
+         (cond (<= n 0) "heute" (= n 1) "vor 1 Tag" :else (str "vor " n " Tagen")))
+       (catch Exception _ (str ds))))
+
+;; --- ambient context: rules come from the SPACE, not the engine -------------
+(defn ambient-contexts []
+  (let [os (str/lower-case (System/getProperty "os.name"))
+        {:keys [always by-os]} (:ambient @config)]
+    (into (set (or always [:ctx/user]))
+          (mapcat :provides
+                  (filter #(str/includes? os (str/lower-case (:match %)))
+                          (or by-os [{:match "mac" :provides [:ctx/mac]}]))))))
+
+;; --- commands ---------------------------------------------------------------
+(defn register-space [path]
+  (when-not path
+    (binding [*out* *err*] (println "usage: weave register <path>")) (System/exit 2))
+  (let [abs (.getCanonicalPath (io/file path))]
+    (when-not (.exists (io/file abs "space.edn"))
+      (binding [*out* *err*] (println (str "WARN: " abs " has no space.edn"))))
+    (io/make-parents cfg-file)
+    (spit cfg-file (pr-str (assoc (or (read-config) {}) :default-space abs)))
+    (println (str "Registered default space: " abs))))
+
+;; init scaffoldet einen frischen, gültigen Space (heute macht das der Mensch von Hand).
+;; Der Seed-Pfad wird relativ zum ECHTEN Skript aufgelöst (Symlink ~/.local/bin/weave
+;; → repo/weave), damit init auch installiert die repo-Seed findet.
+(defn- seed-register-file []
+  (-> (io/file (System/getProperty "babashka.file"))
+      .getCanonicalFile .getParentFile        ; -> repo-Verzeichnis (Symlink aufgelöst)
+      (io/file "seed" "register.edn")))
+
+(defn init [dir]
+  (when-not dir
+    (binding [*out* *err*] (println "usage: weave init <dir>")) (System/exit 2))
+  (let [d     (io/file dir)
+        space (io/file d "space.edn")]
+    (when (.exists space)
+      (binding [*out* *err*]
+        (println (str "Space existiert bereits: " (.getPath space) " — abgebrochen.")))
+      (System/exit 1))
+    (.mkdirs (io/file d "projection"))
+    (.mkdirs (io/file d "journal"))
+    (let [seed (seed-register-file)]
+      (spit (io/file d "projection" "register.edn")
+            (if (.exists seed) (slurp seed) "{:version 0 :concepts [] :contexts []}\n")))
+    (spit (io/file d "projection" "facts.edn") "{:facts []}\n")
+    (spit space (str "{:space \"" (.getName (.getAbsoluteFile d)) "\"\n"
+                     " :description \"\"\n"
+                     " :engine {:name \"weave\" :repo \"https://github.com/kangsy/weave-kb\"}\n"
+                     " :ambient {:always []}}\n"))
+    (println (str "✓ Space angelegt: " (.getPath d)))
+    (println (str "  Nächstes: Quelle projizieren (Skill weave-ingest), dann `weave --space " (.getPath d) " insights`."))))
+
+(defn where []
+  (if space
+    (println (str "space: " space "   (" (or (:space @config) "unnamed") ")"))
+    (println "no space resolved — run: weave register <path>")))
+
+(defn overview []
+  (need-space!)
+  (let [have    (ambient-contexts)
+        os      (System/getProperty "os.name")
+        always  (set (:always (:ambient @config)))          ;; immer erfüllte Kontexte → nicht anzeigen
+        ctxs    (fn [cs] (str/join ", " (map context-label cs)))
+        rows    (for [a (entities-with :k/next-action)
+                      :let  [c (o a :k/concerns)]
+                      :when (or (nil? c) (current? c))]
+                  (let [need  (o a :k/needs-context)
+                        needs (cond (nil? need) #{} (set? need) need :else #{need})
+                        blk   (o a :k/blocked-by)]
+                    {:text    (o a :k/next-action)
+                     :label   (when c (ent-label c))
+                     :blocker blk
+                     :extra   (sort (remove always needs))         ;; „interessante" Kontexte (ohne always)
+                     :missing (sort (set/difference needs have))   ;; fehlende Kontexte
+                     :doable? (and (nil? blk) (set/subset? needs have))}))
+        {doable true waiting false} (group-by :doable? rows)
+        line    (fn [r] (str "   • " (:text r) (when (:label r) (str "   " (bold (str "[" (:label r) "]"))))))]
+    (println (str "Space: " (bold (or (:space @config) space))
+                  (dim (str "   ·   os=" os
+                            "   ·   Kontext: " (if (seq have) (ctxs (sort have)) "—")))))
+    (println)
+    (println (bold "▶ Machbar hier & jetzt:"))
+    (if (seq doable)
+      (doseq [r (sort-by #(str (:label %)) doable)]
+        (println (str (line r) (when (seq (:extra r)) (dim (str "   (" (ctxs (:extra r)) ")")))))
+        (println))
+      (do (println "   (nichts — kein passender Kontext auf diesem Rechner)") (println)))
+    (println (bold "⏳ Wartet:"))
+    (if (seq waiting)
+      (doseq [r (sort-by #(str (:label %)) waiting)]
+        (let [reason (str/join "   " (remove nil?
+                                             [(when (:blocker r) (str "⛔ " (:blocker r)))
+                                              (when (seq (:missing r)) (dim (str "(braucht " (ctxs (:missing r)) ")")))]))]
+          (println (str (line r) (when (seq reason) (str "   " reason)))))
+        (println))
+      (println "   (nichts)"))))
+
+(defn topics [& args]
+  (need-space!)
+  (let [all?      (some #{"--all"} args)
+        subj      (set (map first @facts))
+        concerns  (set (keep (fn [[_ p v]] (when (= p :k/concerns) v)) @facts))
+        part-tgts (set (keep (fn [[_ p v]] (when (= p :k/part-of) v)) @facts))
+        all       (set (filter #(and (topic? %) (current? %))
+                               (set/union subj concerns part-tgts)))
+        parent    (fn [e] (o e :k/part-of))
+        children  (fn [p] (sort (filter #(= p (parent %)) all)))
+        ;; Wurzel = kein Elternteil ODER Elternteil nicht (mehr) aktuell/Topic
+        roots     (sort (filter #(let [p (parent %)] (or (nil? p) (not (all p)))) all))
+        actions   (fn [e] (for [a (entities-with :k/next-action) :when (= e (o a :k/concerns))]
+                            (let [n (o a :k/needs-context)]
+                              {:text (o a :k/next-action) :blocker (o a :k/blocked-by)
+                               :needs (cond (nil? n) [] (set? n) (vec n) :else [n])})))
+        show      (fn show [e depth]
+                    (let [ind (apply str (repeat depth "   "))
+                          lt  (o e :k/last-touched)
+                          as  (actions e)]
+                      (println (str ind "• " (bold (ent-label e))
+                                    (when lt (dim (str "   (zuletzt: " lt ")")))
+                                    (when (empty? as) (dim "   — kein offener Punkt"))))
+                      (when-let [sr (o e :k/structure-review)]
+                        (println (str ind "     " (dim (str "⟲ geprüft: " sr)))))
+                      (doseq [a as]
+                        (println (str ind "     → " (:text a)
+                                      (when (seq (:needs a)) (dim (str "  [" (str/join "," (map context-label (:needs a))) "]")))
+                                      (when (:blocker a) (str "  ⛔ " (:blocker a))))))
+                      (doseq [c (children e)] (show c (inc depth)))))]
+    (println (str "Topics in space " (or (:space @config) space) ":"))
+    (println)
+    (doseq [r roots] (show r 0))
+    ;; Sichtbarkeit ist eine Linse (foundations §3.3c): abgelöste Entitäten werden
+    ;; nicht gelöscht, sondern per --all in einer eigenen Sektion enthüllt.
+    (when all?
+      (let [archived (sort (filter #(and (topic? %) (not (current? %)))
+                                   (set/union subj concerns part-tgts)))]
+        (when (seq archived)
+          (println)
+          (println (bold "— Abgelöst (Historie) —"))
+          (doseq [e archived]
+            (let [succ (superseded-by @facts e)
+                  lt   (o e :k/last-touched)]
+              (println (str "   • " (bold (ent-label e))
+                            (when (seq succ) (dim (str "   → " (str/join ", " (map ent-label succ)))))
+                            (when lt (dim (str "   (zuletzt: " lt ")"))))))))))))
+
+(defn check []
+  (need-space!)
+  (let [problems (atom [])
+        cbi (concept-by-id) xbi (context-by-id)]
+    (doseq [[s p v] @facts]
+      (when-not (cbi p)
+        (swap! problems conj (str "Unknown predicate " p " (in fact [" s " " p " " v "]) — not in register.")))
+      (when (and (keyword? v) (= "ctx" (namespace v)) (not (xbi v)))
+        (swap! problems conj (str "Unknown context " v " (in fact [" s " " p " …]) — not in register."))))
+    (let [today (LocalDate/now)]
+      (doseq [e (entities-with :k/last-touched) :when (current? e)]
+        (let [d    (LocalDate/parse (o e :k/last-touched))
+              days (.between ChronoUnit/DAYS d today)]
+          (when (> days 21)
+            (swap! problems conj (str "Stale: " e " not touched for " days " days (" (o e :k/last-touched) ")."))))))
+    ;; --- Entitäts-Modell: part-of, Genealogie, Source-Bindung (spec §5) ------
+    (let [subj    (set (map first @facts))
+          known?  (fn [e] (subj e))
+          parent  (fn [e] (o e :k/part-of))]
+      ;; (1) part-of-Ziel muss bekannte Entität sein
+      (doseq [[s p v] @facts :when (= p :k/part-of)]
+        (when-not (known? v)
+          (swap! problems conj (str "Dangling part-of: " s " → " v " (Ziel ist keine bekannte Entität — als Entität deklarieren, z. B. via :k/label)."))))
+      ;; (2) kein part-of-Zyklus
+      (doseq [e (filter topic? (distinct (map first @facts)))]
+        (loop [cur (parent e) seen #{e}]
+          (when cur
+            (if (seen cur)
+              (swap! problems conj (str "part-of-Zyklus an " e " (über " cur ")."))
+              (recur (parent cur) (conj seen cur))))))
+      ;; (3) Genealogie-Ziele existieren
+      (doseq [[s p v] @facts :when (#{:k/split-of :k/merged-into} p)]
+        (when-not (known? v)
+          (swap! problems conj (str "Genealogie zeigt ins Leere: " s " " p " " v " (Ziel unbekannt)."))))
+      ;; (4) abgelöste Entität ohne offene next-action
+      (doseq [a (entities-with :k/next-action) :let [c (o a :k/concerns)]]
+        (when (and c (@gone c))
+          (swap! problems conj (str "Abgelöste Entität " c " hat offene next-action (" (o a :k/next-action) ")."))))
+      ;; (5) Journal-Quelle existiert
+      (doseq [[s p v] @facts :when (= p :k/source)]
+        (when-not (.exists (io/file space v))
+          (swap! problems conj (str "Journal-Quelle fehlt: " s " :k/source " v " (Datei existiert nicht).")))))
+    (if (seq @problems)
+      (do (println (str "✗ " (count @problems) " finding(s):"))
+          (doseq [p @problems] (println (str "   - " p))))
+      (println "✓ No violations. Fact base coherent against the register."))))
+
+;; --- divergence (explicit two-dir op; not space-bound) ----------------------
+(defn- load-proj [dir]
+  (let [reg (slurp-edn (io/file dir "register.edn"))]
+    {:facts  (set (:facts (slurp-edn (io/file dir "facts.edn"))))
+     :labels (into {} (map (juxt :id :label) (:concepts reg)))
+     :ids    (set (map :id (:concepts reg)))}))
+
+(defn divergence [dir-a dir-b]
+  (let [a (load-proj dir-a) b (load-proj dir-b)
+        cosmetic (for [id (set/intersection (:ids a) (:ids b))
+                       :let [la (get (:labels a) id) lb (get (:labels b) id)]
+                       :when (not= la lb)] [id la lb])
+        new-concepts (set/difference (:ids b) (:ids a))
+        added   (set/difference (:facts b) (:facts a))
+        removed (set/difference (:facts a) (:facts b))
+        key-ep  (fn [[s p _]] [s p])
+        rem-idx (group-by key-ep removed)
+        changed (for [f added :let [r (first (rem-idx (key-ep f)))] :when r] [r f])
+        changed-keys (set (map (comp key-ep second) changed))
+        surfaced  (remove #(changed-keys (key-ep %)) added)
+        retracted (remove #(changed-keys (key-ep %)) removed)]
+    (println (str "Divergence  " dir-a "  vs  " dir-b "  (same journal, two projections)"))
+    (println)
+    (println (str "COSMETIC — filtered as noise (same concept id, label drift): " (count cosmetic)))
+    (doseq [[id la lb] cosmetic] (println (str "   · " id "  \"" la "\" → \"" lb "\"")))
+    (println)
+    (println "SEMANTIC — signal:")
+    (println (str "  ▸ vocabulary grew: +" (count new-concepts) " concept"
+                  (when (seq new-concepts) (str "  " (vec new-concepts)))))
+    (println (str "  ▸ refined assertions: " (count changed)))
+    (doseq [[r f] changed] (println (str "     " (pr-str r) "  ⇒  " (pr-str f))))
+    (println (str "  ▸ surfaced facts (in B, not A): " (count surfaced)))
+    (doseq [f surfaced] (println (str "     + " (pr-str f)
+                                      (when (new-concepts (nth f 1)) "   (via new concept — refinement engine)"))))
+    (println (str "  ▸ retracted facts (in A, not B): " (count retracted)))
+    (doseq [f retracted] (println (str "     - " (pr-str f))))))
+
+;; --- journal (backward-looking: last activity per project, from the JOURNAL) --
+;; Reads the prose journal (the truth), not the projection: "what was done" is
+;; narrative. Shows the most recent entry per project, formatted. Date-granular
+;; (no intraday ordering yet). A summarising `recap` is a separate future feature.
+(defn- journal-files []
+  (let [d (io/file space "journal")]
+    (when (.isDirectory d)
+      (sort-by #(.getPath %)
+               (filter #(and (.isFile %) (str/ends-with? (.getName %) ".md"))
+                       (file-seq d))))))
+
+(defn- parse-journal [f]
+  (let [lines (str/split-lines (slurp f))
+        title (some (fn [l] (when (str/starts-with? l "# ") (subs l 2))) lines)
+        start? (fn [l] (re-find #"^- (\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?" l))
+        entries (loop [ls lines cur nil acc []]
+                  (if (empty? ls)
+                    (if cur (conj acc cur) acc)
+                    (let [l (first ls) m (start? l)]
+                      (cond
+                        m   (recur (rest ls) {:date (nth m 1) :time (nth m 2) :lines [l]} (if cur (conj acc cur) acc))
+                        cur (recur (rest ls) (update cur :lines conj l) acc)
+                        :else (recur (rest ls) nil acc)))))]
+    {:title (or title (.getName f)) :entries entries}))
+
+(defn- latest-entry-of [f]
+  (let [{:keys [entries]} (parse-journal f)]
+    (when (seq entries) (last entries))))
+
+(defn journal [& args]
+  (need-space!)
+  (let [brief? (some #{"--brief"} args)
+        all?   (some #{"--all"} args)
+        srcs   (keep (fn [[s p v]] (when (= p :k/source) [s v])) @facts)
+        ;; Sichtbarkeit ist NIE an :k/source gekoppelt (foundations §3.3c): die Bindung
+        ;; ordnet nur Prosa zu. Gezeigt werden gebundene Entitäten (per Label) UND
+        ;; ungebundene Journal-Dateien (per Datei-Titel), dedupliziert über den Pfad.
+        bound-paths (set (map (fn [[_ v]] (.getAbsolutePath (io/file space v))) srcs))
+        show?  (fn [e] (and (topic? e) (or all? (current? e))))
+        bound  (for [e (distinct (map first srcs))
+                     :when (show? e)
+                     :let  [files   (filter #(.exists %)
+                                            (map #(io/file space (second %))
+                                                 (filter #(= e (first %)) srcs)))
+                            entries (keep latest-entry-of files)
+                            latest  (when (seq entries)
+                                      (last (sort-by #(str (:date %) " " (or (:time %) "00:00")) entries)))]
+                     :when latest]
+                 {:title (str (ent-label e) (when-not (current? e) "   — abgelöst"))
+                  :date (:date latest) :time (:time latest) :lines (:lines latest)})
+        leftover (for [f (journal-files)
+                       :when (not (bound-paths (.getAbsolutePath f)))
+                       :let  [{:keys [title entries]} (parse-journal f)]
+                       :when (seq entries)]
+                   (let [e (last entries)] {:title title :date (:date e) :time (:time e) :lines (:lines e)}))
+        projs  (concat bound leftover)
+        sortkey  (fn [e] (str (:date e) " " (or (:time e) "00:00")))
+        sorted   (sort-by sortkey #(compare %2 %1) projs)
+        strip    (fn [h] (str/replace h #"^- \d{4}-\d{2}-\d{2}( \d{2}:\d{2})?( \([^)]*\))?:\s*" ""))
+        fmt-body (fn [ln]                                   ;; eine Body-Zeile → 0..n Terminal-Zeilen
+                   (let [t (str/trim ln)]
+                     (cond
+                       (str/blank? t)          [""]         ;; Absatz-Umbruch erhalten
+                       (re-find #"^[-*+]\s+" t) (wrap "      • " "        " (md->ansi (str/replace t #"^[-*+]\s+" "")))
+                       :else                   (wrap "    " "    " (md->ansi t)))))]
+    (println (str "Journal — letzte Aktivität je Projekt (neueste zuerst)"
+                  (when all? "  [--all: inkl. abgelöst]") ":"))
+    (println)
+    (doseq [{:keys [title date time lines]} sorted]
+      (let [[h & more] lines
+            lead  (strip h)
+            stamp (str date (when time (str " " time)))]
+        (println (str "● " (bold title) "   " (dim (str "(" stamp ")"))))
+        (if brief?
+          (let [full     (md->ansi (str/join " " (map str/trim (remove str/blank? (cons lead more)))))
+                sentence (first (str/split full #"(?<=[.!?])\s"))]
+            (run! println (wrap "    " "    " sentence)))
+          (run! println (mapcat fmt-body (cons lead more))))
+        (println)))))
+
+;; --- recap (aktueller Stand je Projekt; Hybrid: :k/digest-Prosa, sonst mechanisch) --
+;; Gegenstück zu journal (das den letzten *rohen* Eintrag zeigt): recap verdichtet den
+;; *Stand*. Der Digest (:k/digest) wird von einer Session geschrieben; recap zeigt ihn
+;; nur an. Fehlt er, fällt recap auf blocked-by/next-action zurück.
+(defn recap [& args]
+  (need-space!)
+  (let [all?    (some #{"--all"} args)
+        today   (LocalDate/now)
+        topics* (->> (set/union (set (map first @facts))
+                                (set (keep (fn [[_ p v]] (when (= p :k/concerns) v)) @facts))
+                                (set (keep (fn [[_ p v]] (when (= p :k/part-of) v)) @facts)))
+                     (filter #(and (topic? %) (or all? (current? %))))
+                     (sort-by (fn [e] (or (o e :k/last-touched) "")) #(compare %2 %1)))
+        acts-of (fn [e] (for [a (entities-with :k/next-action) :when (= e (o a :k/concerns))]
+                          {:text (o a :k/next-action) :blocker (o a :k/blocked-by)}))]
+    (println (str "Recap — Stand je Projekt (zuletzt aktiv zuerst)"
+                  (when all? "  [--all: inkl. abgelöst]") ":"))
+    (println)
+    (doseq [e topics*]
+      (let [lt     (o e :k/last-touched)
+            digest (o e :k/digest)
+            as     (acts-of e)]
+        (println (str "● " (bold (ent-label e))
+                      (when lt (str "   " (dim (str "(" (rel-age today lt) ")"))))
+                      (when-not (current? e) (dim "   — abgelöst"))))
+        (cond
+          digest   (run! println (wrap "   " "   " (md->ansi digest)))
+          (seq as) (doseq [a as]
+                     (run! println (wrap "   " "     "
+                                         (str (when (:blocker a) (str "⛔ " (:blocker a) "   "))
+                                              "→ " (:text a)))))
+          :else    (println (dim "   — kein offener Punkt")))
+        (println)))))
+
+;; --- KB-Explorations-Views (read-only, generisch über die Faktenbasis) -------
+;; Domänen-agnostisch: laufen über jede facts.edn. Für die KB-Nutzung (weave als
+;; Wissensbasis), aber auch auf dem Tracker brauchbar. Siehe docs/whitepaper.md.
+(defn- o-all [e a] (keep (fn [[s p v]] (when (and (= s e) (= p a)) v)) @facts))
+(defn- known-entities [] (set (entities-with :k/label)))
+(defn- pred-label [p] (or (:label ((concept-by-id) p)) (name p)))
+(defn- vstr [v] (cond (and (keyword? v) (o v :k/label)) (o v :k/label)
+                      (keyword? v) (str v)
+                      :else (str v)))
+(defn- flag-val [args flag] (second (drop-while #(not= % flag) args)))
+(defn- resolve-ent [arg]
+  (when arg
+    (let [k    (try (edn/read-string arg) (catch Exception _ nil))
+          ents (known-entities)]
+      (if (and (keyword? k) (ents k))
+        k
+        (let [lc (str/lower-case (str arg))]
+          (first (sort-by #(count (ent-label %))
+                          (filter #(str/includes? (str/lower-case (ent-label %)) lc) ents))))))))
+(defn- long-val? [v] (and (string? v) (> (count v) 45)))
+
+(defn view [& args]
+  (need-space!)
+  (let [e (resolve-ent (first args))]
+    (if-not e
+      (println (dim (str "Keine Entität für: " (first args) "  (Tipp: `weave find <text>`)")))
+      (let [out    (remove #(= :k/label (second %)) (filter #(= e (first %)) @facts))
+            incm   (filter #(= e (nth % 2)) @facts)]
+        (println (str "● " (bold (ent-label e)) "   " (dim (str e))
+                      (when-not (current? e) (dim "   — abgelöst"))))
+        (println)
+        (doseq [[p fs] (sort-by (comp pred-label first) (group-by second out))
+                :let [vals (map #(nth % 2) fs)
+                      shorts (remove long-val? vals)
+                      longs  (filter long-val? vals)]]
+          (when (seq shorts)
+            (run! println (wrap (str "  " (bold (pred-label p)) ": ") "      "
+                                (str/join " · " (map vstr shorts)))))
+          (doseq [lv longs]
+            (println (str "  " (bold (pred-label p)) ":"))
+            (run! println (wrap "      " "      " (md->ansi lv)))))
+        (when (seq incm)
+          (println)
+          (println (dim "  ← Backlinks"))
+          (doseq [[p fs] (sort-by (comp pred-label first) (group-by second incm))]
+            (run! println (wrap (str "    " (dim (pred-label p)) " ← ") "        "
+                                (str/join " · " (map #(ent-label (first %)) fs))))))))))
+
+(defn neighbors [& args]
+  (need-space!)
+  (let [ent   (resolve-ent (first (remove #(str/starts-with? (str %) "--") args)))
+        depth (or (some-> (flag-val args "--depth") parse-long) 1)
+        ents  (known-entities)
+        adj   (fn [e] (distinct (concat
+                                 (keep (fn [[s _ v]] (when (and (= s e) (ents v) (not= v e)) v)) @facts)
+                                 (keep (fn [[s _ v]] (when (and (= v e) (ents s) (not= s e)) s)) @facts))))]
+    (if-not ent
+      (println (dim (str "Keine Entität für: " (first args))))
+      (do (println (str "● " (bold (ent-label ent)) "   " (dim (str "Nachbarschaft, Tiefe " depth))))
+          (loop [frontier #{ent} seen #{ent} d 1]
+            (when (<= d depth)
+              (let [nxt (into #{} (remove seen (mapcat adj frontier)))]
+                (when (seq nxt)
+                  (println)
+                  (println (dim (str "  ── Ring " d " (" (count nxt) ") ──")))
+                  (run! println (wrap "    " "    " (str/join " · " (map ent-label (sort-by ent-label nxt))))))
+                (recur nxt (into seen nxt) (inc d)))))))))
+
+(defn find-cmd [& args]
+  (need-space!)
+  (let [q      (str/lower-case (str/join " " args))
+        ents   (known-entities)
+        lhits  (filter #(str/includes? (str/lower-case (ent-label %)) q) ents)
+        vhits  (filter (fn [[_ p v]] (and (string? v) (not= p :k/label)
+                                          (str/includes? (str/lower-case v) q))) @facts)]
+    (println (str (bold "find") " „" q "\"  —  " (count lhits) " Label-, " (count vhits) " Text-Treffer"))
+    (when (seq lhits)
+      (println) (println (dim "  Entitäten:"))
+      (run! println (wrap "    " "    " (str/join " · " (map ent-label (sort-by ent-label lhits))))))
+    (when (seq vhits)
+      (println) (println (dim "  in Fakten:"))
+      (doseq [[s p v] (take 40 vhits)]
+        (run! println (wrap (str "    " (bold (ent-label s)) " " (dim (pred-label p)) ": ") "        "
+                            (md->ansi v)))))))
+
+(defn tensions [& _]
+  (need-space!)
+  (let [ts (filter #(= :k/tension (second %)) @facts)
+        cn (count (filter #(= :k/caution (second %)) @facts))]
+    (println (str (bold "Spannungen") " (" (count ts) " · " cn " cautions):"))
+    (doseq [[s _ v] ts]
+      (println)
+      (println (str "● " (bold (ent-label s))))
+      (run! println (wrap "    " "    " (md->ansi v))))))
+
+(defn insights [& _]
+  (need-space!)
+  (let [surv (entities-with :k/inferred-across)
+        rej  (entities-with :k/rejected-inference)
+        show (fn [e claim]
+               (println)
+               (println (str "● " (bold (ent-label e))))
+               (run! println (wrap "    " "    " (md->ansi claim)))
+               (when-let [g (seq (o-all e :k/grounded-in))]
+                 (println (dim (str "    ⇒ grounded-in: " (str/join ", " (map vstr g))))))
+               (when-let [c (o e :k/confidence)]
+                 (run! println (wrap (dim "    conf: ") "          " c))))]
+    (println (str (bold "Einsichten") " — überlebt (" (count surv) "):"))
+    (doseq [e surv] (show e (o e :k/inferred-across)))
+    (println)
+    (println (str (bold "— verworfen (behalten als Urteils-Artefakt)") " (" (count rej) "):"))
+    (doseq [e rej] (show e (o e :k/rejected-inference)))))
+
+(defn hubs [& args]
+  (need-space!)
+  (let [ents (known-entities)
+        deg  (fn [e] (+ (count (filter (fn [[s _ v]] (and (= s e) (ents v))) @facts))
+                        (count (filter (fn [[_ _ v]] (= v e)) @facts))))
+        top  (or (some-> (flag-val args "--top") parse-long) 20)
+        rows (->> ents (map (fn [e] [e (deg e)])) (sort-by second >) (take top))]
+    (println (str (bold "Hubs") " — Verknüpfungsgrad (Top " top "):"))
+    (doseq [[e d] rows]
+      (println (str "  " (dim (format "%3d" d)) "  " (ent-label e))))))
+
+(defn predicates [& _]
+  (need-space!)
+  (let [cnt  (frequencies (map second @facts))
+        reg  (map :id (:concepts @register))
+        rows (sort-by (comp - #(get cnt % 0)) reg)]
+    (println (str (bold "Prädikate") " — Register (" (count reg) "), Nutzung:"))
+    (doseq [p rows]
+      (let [c (get cnt p 0)]
+        (println (str "  " (dim (format "%4d" c)) "  " (if (zero? c) (dim (pred-label p)) (pred-label p))
+                      (when (zero? c) (dim "  (ungenutzt)"))))))
+    (let [orphan (remove (set reg) (keys cnt))]
+      (when (seq orphan)
+        (println (dim (str "  ⚠ nicht im Register: " (str/join ", " (map name orphan)))))))))
+
+;; --- main --------------------------------------------------------------------
+(case (first cmd-args)
+  "register"   (register-space (second cmd-args))
+  "init"       (init (second cmd-args))
+  "where"      (where)
+  "overview"   (overview)
+  "topics"     (apply topics (rest cmd-args))
+  "journal"    (apply journal (rest cmd-args))
+  "recap"      (apply recap (rest cmd-args))
+  "check"      (check)
+  "divergence" (apply divergence (rest cmd-args))
+  "view"       (apply view (rest cmd-args))
+  "neighbors"  (apply neighbors (rest cmd-args))
+  "find"       (apply find-cmd (rest cmd-args))
+  "tensions"   (apply tensions (rest cmd-args))
+  "insights"   (apply insights (rest cmd-args))
+  "hubs"       (apply hubs (rest cmd-args))
+  "predicates" (apply predicates (rest cmd-args))
+  (println (str "usage: weave [register <path>|init <dir>|where|overview|topics [--all]|"
+                "journal [--brief|--all]|recap [--all]|check|divergence <dirA> <dirB>]\n"
+                "             KB-Views: view <ent>|neighbors <ent> [--depth N]|find <text>|"
+                "tensions|insights|hubs [--top N]|predicates")))

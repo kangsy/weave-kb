@@ -1,0 +1,3 @@
+{:space "genealogy-fixture"
+ :ambient {:always [:ctx/user]
+           :by-os  [{:match "mac" :provides [:ctx/mac]}]}}

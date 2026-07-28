@@ -1,0 +1,2 @@
+{:space "drift-fixture"
+ :ambient {:always [:ctx/user]}}

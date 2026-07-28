@@ -1,0 +1,64 @@
+;; Seed register — optional backbone concepts a NEW Weave space may start from.
+;; Domain-neutral only. No contexts (those are inherently space-specific:
+;; your devices, people, places). A space grows its register emergently from here.
+
+{:version 1
+ :concepts
+ [{:id :k/part-of
+   :label "part-of"
+   :definition "Partonomic membership: the subject is part of the object."}
+  {:id :k/concerns
+   :label "concerns"
+   :definition "The entity an action or fact refers to."}
+  {:id :k/next-action
+   :label "next-action"
+   :definition "The next concrete action to move an entity forward. Deliberately replaces a status enum."}
+  {:id :k/blocked-by
+   :label "blocked-by"
+   :definition "A missing artifact or condition that currently prevents the next action."}
+  {:id :k/needs-context
+   :label "needs-context"
+   :definition "GTD context: a condition (place/device/person) under which an action is doable. Matched against the session's ambient context."}
+  {:id :k/last-touched
+   :label "last-touched"
+   :definition "Date of the most recent journal entry for an entity (basis for stale detection)."}
+  {:id :k/label
+   :label "label"
+   :definition "Human-readable name of an entity. Mutable mirror of the entity's current identity; the opaque id is the identity, never the label."}
+  {:id :k/source
+   :label "source"
+   :definition "Binding from an entity to its journal source location (path within the space). May be multi-valued. The journal directory is an opaque, rebuildable index; identity never lives in the path."}
+  {:id :k/split-of
+   :label "split-of"
+   :definition "Genealogy: the subject entity is a descendant produced by splitting the object entity. The object thereby becomes superseded (no longer current) but remains queryable for its history."}
+  {:id :k/merged-into
+   :label "merged-into"
+   :definition "Genealogy: the subject entity was merged into the object entity. The subject thereby becomes superseded (no longer current)."}
+  {:id :k/digest
+   :label "digest"
+   :definition "Short, session-authored 'where it stands' digest of an entity (current state, not history). Displayed mechanically by `weave recap`; optional — when absent, recap falls back to blocked-by/next-action."}
+  {:id :k/structure-review
+   :label "structure-review"
+   :definition "Latest structural judgment for an entity: keep or change the current structure (flat vs umbrella, actions vs subprojects). A short verdict line '<date> · kept|changed · <brief reason>'; the full reasoning lives in the journal. An LLM judgment made during re-projection, never a rule — recorded so deliberate continuity is as visible as change. `topics` surfaces it; a stale review date passively flags a candidate."}
+
+  ;; --- KB-Backbone (Wissensbasis-Nutzung): Spannungen, Nuancen, Insight-Schicht ---
+  {:id :k/tension
+   :label "tension"
+   :definition "A deliberately UNRESOLVED contradiction/tension — outward vs internal reading, or two source statements that disagree. Kept, not resolved. Attach to a representative subject entity. When the source itself flags it, it is :projected-from (faithful), not inferred."}
+  {:id :k/caution
+   :label "caution"
+   :definition "A caveat/nuance about an entity, incl. a source's own confidence/status tags carried as CONTENT (never as system trust)."}
+  {:id :k/inferred-across
+   :label "inferred-across"
+   :definition "PROVENANCE MARKER on a reified insight entity (:i-*): AI-synthesized ACROSS the map — stated in NO document. Value = the claim. Distinct from faithful projection; only for grounded candidates that survived adversarial challenge. Never output as truth."}
+  {:id :k/grounded-in
+   :label "grounded-in"
+   :definition "An insight rests on this object entity/fact (traceability = groundedness). Value is an entity handle; cite specific triples in :k/confidence text. Empty / model-prior-only ⇒ discard."}
+  {:id :k/confidence
+   :label "confidence"
+   :definition "Confidence of an inference + adversarial-check result (e.g. hoch/plausibel, or 'VERWORFEN: <reason>'). Content, not system trust."}
+  {:id :k/rejected-inference
+   :label "rejected-inference"
+   :definition "PROVENANCE MARKER on a reified insight that did NOT survive the adversarial check — kept as a judgment artifact (not discarded). Value = the rejected claim; the reason lives in :k/confidence."}]
+
+ :contexts []}

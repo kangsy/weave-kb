@@ -1,0 +1,176 @@
+{:facts
+ [;; ============================================================
+  ;; weave — the reference implementation (§5), abstract
+  ;; ============================================================
+  [:topic/weave :k/label "Weave"]
+  [:topic/weave :k/source "journal/whitepaper.md"]
+  [:topic/weave :k/addresses :topic/classification-burden]
+  [:topic/weave :k/anchor "The knowledge layer classical Topic Maps needed a HUMAN to author is here derived and maintained by the machine (§5.3)."]
+
+  ;; ============================================================
+  ;; §1 — the cost of structure
+  ;; ============================================================
+  [:topic/classification-burden :k/label "The cost of structure (classification burden)"]
+  [:topic/classification-burden :k/source "journal/whitepaper.md"]
+  [:topic/classification-burden :k/caution "Not the shape (single hierarchy): faceted schemes and Topic Maps already allow many structures per entity. The residual cost is human authoring/maintenance BEFORE understanding (§1.2)."]
+  [:topic/classification-burden :k/tension "Machine derivation is claimed to remove the burden, yet honestly it is only DISPLACED into predicate/entity choice and delegated to the machine — it reappears at scale as lookup-before-mint over thousands of entities (§6.2)."]
+
+  [:topic/vocabulary-problem :k/label "The vocabulary problem"]
+  [:topic/vocabulary-problem :k/source "journal/whitepaper.md"]
+  [:topic/vocabulary-problem :k/part-of :topic/classification-burden]
+  [:topic/vocabulary-problem :k/anchor "Furnas, Landauer, Gomez & Dumais (1987): two people favor the same term for an object with probability < 0.20 (§1.2)."]
+
+  [:topic/faceted-classification :k/label "Faceted classification"]
+  [:topic/faceted-classification :k/source "journal/whitepaper.md"]
+  [:topic/faceted-classification :k/anchor "Ranganathan, Colon Classification 1933 — orthogonal facets compose a subject, escaping monohierarchy (§1.1)."]
+
+  [:topic/taxonomy :k/label "Top-down classification into a scheme"]
+  [:topic/taxonomy :k/source "journal/whitepaper.md"]
+  [:topic/taxonomy :k/caution "The paper prefers description-by-relation over classification-into-a-scheme; classification is allowed to EMERGE as a revisable fact, never as a precondition (§2)."]
+
+  ;; ============================================================
+  ;; §3 — architecture: journal, projection, register
+  ;; ============================================================
+  [:topic/journal :k/label "Journal — the source of truth"]
+  [:topic/journal :k/source "journal/whitepaper.md"]
+  [:topic/journal :k/part-of :topic/weave]
+  [:topic/journal :k/enables :topic/re-projection]
+
+  [:topic/event-sourcing :k/label "Event sourcing / CQRS"]
+  [:topic/event-sourcing :k/source "journal/whitepaper.md"]
+  [:topic/event-sourcing :k/anchor "Journal = immutable event log; fact base = materialized view; replay regenerates the view (§3.1)."]
+  [:topic/event-sourcing :k/enables :topic/re-projection]
+
+  [:topic/projection :k/label "Projection — derived facts"]
+  [:topic/projection :k/source "journal/whitepaper.md"]
+  [:topic/projection :k/part-of :topic/weave]
+  [:topic/projection :k/contrasts-with :topic/taxonomy]
+
+  [:topic/eav-triple :k/label "EAV fact triple (entity, concept-id, value)"]
+  [:topic/eav-triple :k/source "journal/whitepaper.md"]
+  [:topic/eav-triple :k/part-of :topic/projection]
+  [:topic/eav-triple :k/contrasts-with :topic/taxonomy]
+
+  [:topic/re-projection :k/label "Re-projection / replay"]
+  [:topic/re-projection :k/source "journal/whitepaper.md"]
+  [:topic/re-projection :k/enables :topic/divergence]
+  [:topic/re-projection :k/tension "Advertised as regenerable by replay (§3.1), but the divergence demo's second projection was hand-built, not blindly re-derived — the true non-determinism test is outstanding (§6.2)."]
+
+  [:topic/register :k/label "Concept register"]
+  [:topic/register :k/source "journal/whitepaper.md"]
+  [:topic/register :k/part-of :topic/projection]
+  [:topic/register :k/enables :topic/lookup-before-mint]
+  [:topic/register :k/anchor "Reflexive/self-describing like RDF; schema-as-queryable-data like Datomic; homoiconicity like Lisp (§4.3)."]
+
+  [:topic/concept-triangle :k/label "Concept–term–definition triangle"]
+  [:topic/concept-triangle :k/source "journal/whitepaper.md"]
+  [:topic/concept-triangle :k/part-of :topic/register]
+  [:topic/concept-triangle :k/anchor "Semiotic triangle (Ogden & Richards 1923); terminology science (Wüster; ISO 704/1087) (§3.3, §4.1)."]
+
+  [:topic/stable-id :k/label "Stable opaque ID + mutable label"]
+  [:topic/stable-id :k/source "journal/whitepaper.md"]
+  [:topic/stable-id :k/part-of :topic/concept-triangle]
+  [:topic/stable-id :k/enables :topic/lookup-before-mint]
+  [:topic/stable-id :k/enables :topic/divergence]
+
+  [:topic/lookup-before-mint :k/label "lookup-before-mint discipline"]
+  [:topic/lookup-before-mint :k/source "journal/whitepaper.md"]
+  [:topic/lookup-before-mint :k/part-of :topic/register]
+  [:topic/lookup-before-mint :k/addresses :topic/convergence]
+  [:topic/lookup-before-mint :k/addresses :topic/vocabulary-problem]
+
+  [:topic/entity-identity :k/label "Entity identity & evolution"]
+  [:topic/entity-identity :k/source "journal/whitepaper.md"]
+  [:topic/entity-identity :k/part-of :topic/register]
+  [:topic/entity-identity :k/caution "Hierarchy is a detachable fact (:k/part-of), never baked into the ID or a path; operators: mint · relabel · re-parent · split · merge (§3.3)."]
+
+  ;; ============================================================
+  ;; §4 — foundations: fidelity, divergence, check, FCA
+  ;; ============================================================
+  [:topic/check :k/label "Coherence guard (check)"]
+  [:topic/check :k/source "journal/whitepaper.md"]
+  [:topic/check :k/part-of :topic/weave]
+  [:topic/check :k/addresses :topic/fidelity]
+  [:topic/check :k/caution "Detector for the 'broken extraction' (§4.2): catches hallucinated predicates, dangling references, staleness. Verifies coherence against the register — not world-truth."]
+
+  [:topic/fidelity :k/label "Fidelity / admissibility"]
+  [:topic/fidelity :k/source "journal/whitepaper.md"]
+  [:topic/fidelity :k/contrasts-with :topic/reproducibility]
+  [:topic/fidelity :k/anchor "Several faithful readings coexist, like multiple valid translations of one text (§4.2)."]
+
+  [:topic/reproducibility :k/label "Reproducibility"]
+  [:topic/reproducibility :k/source "journal/whitepaper.md"]
+  [:topic/reproducibility :k/caution "Explicitly NOT a goal: the model is non-deterministic; divergent projections of one journal are admissible (§4.2)."]
+
+  [:topic/divergence :k/label "Divergence as an epistemic fact"]
+  [:topic/divergence :k/source "journal/whitepaper.md"]
+  [:topic/divergence :k/anchor "Visible only through contrast — Saussure's differential value; FCA's incidence contrast (§4.3)."]
+  [:topic/divergence :k/caution "ID/label split makes divergence classifiable: same-ID/other-label is cosmetic (noise); a newly minted ID or a flipped assertion is semantic (signal)."]
+
+  [:topic/convergence :k/label "Convergence of the self-modifying loop"]
+  [:topic/convergence :k/source "journal/whitepaper.md"]
+  [:topic/convergence :k/tension "Self-reference DAMPS divergence toward a fixed point (§4.3), yet convergence is explicitly NOT proven — it may oscillate; the bias is designed in, not demonstrated (§6.2)."]
+
+  [:topic/fca :k/label "Formal Concept Analysis (FCA)"]
+  [:topic/fca :k/source "journal/whitepaper.md"]
+  [:topic/fca :k/anchor "Ganter & Wille lattice; LLM as explainer/namer of FCA output, not extractor feeding it (Gutierrez et al. 2025) (§4.4)."]
+  [:topic/fca :k/caution "Scaling limit: exponential concept count, #P-complete counting (Kuznetsov 2001); mitigations iceberg lattices, incremental algorithms, FCA2VEC. Optional offline suggestion layer only (§4.4)."]
+
+  ;; ============================================================
+  ;; §1.1 / §5.3 — Topic Maps; §5.2/§6 — the inferred layer
+  ;; ============================================================
+  [:topic/topic-maps :k/label "Topic Maps"]
+  [:topic/topic-maps :k/source "journal/whitepaper.md"]
+  [:topic/topic-maps :k/anchor "ISO 13250; Pepper, 'The TAO of Topic Maps' — a knowledge layer over an information layer, historically hand-built (§1.1)."]
+
+  [:topic/insight-layer :k/label "The inferred layer (insight)"]
+  [:topic/insight-layer :k/source "journal/whitepaper.md"]
+  [:topic/insight-layer :k/part-of :topic/weave]
+  [:topic/insight-layer :k/caution "A generator proposes connections stated in no single document; a separate skeptic keeps only the grounded ones; survivors and reasoned rejects both persist (§5.2)."]
+  [:topic/insight-layer :k/tension "The inferred layer has NO truth criterion by design — groundedness is the only floor — and the self-bootstrap guardrail (inferred facts feeding back as their own evidence) is unresolved (§6.2)."]
+
+  [:topic/groundedness :k/label "Groundedness (not truth)"]
+  [:topic/groundedness :k/source "journal/whitepaper.md"]
+  [:topic/groundedness :k/addresses :topic/insight-layer]
+  [:topic/groundedness :k/caution "The standard for an inferred reading is groundedness (traceable to the corpus), NOT truth — a reading may be useful without being true (§6.2)."]
+
+  ;; ============================================================
+  ;; INSIGHT LAYER — :inferred-across, generated then adversarially grounded.
+  ;; Stated in NO single section. Survivors + reasoned rejects both persist. Never truth.
+  ;; ============================================================
+
+  ;; -- survivors --
+  [:i-double-load :k/label "lookup-before-mint carries a double load: anti-drift damper AND displaced-classification residue"]
+  [:i-double-load :k/inferred-across "lookup-before-mint is both the anti-drift damper aimed at convergence (§4.3) and the concrete residue of the displaced classification burden (§6.2) — so the discipline that lets classification be derived is also the first thing to break at scale."]
+  [:i-double-load :k/grounded-in :topic/lookup-before-mint]
+  [:i-double-load :k/grounded-in :topic/convergence]
+  [:i-double-load :k/grounded-in :topic/classification-burden]
+  [:i-double-load :k/confidence "hoch — recombination: [lookup-before-mint addresses convergence] ∩ the classification-burden tension ('displaced … reappears at scale as lookup-before-mint over thousands')."]
+
+  [:i-tm-inversion :k/label "Topic Maps' fatal weakness is precisely weave's value proposition"]
+  [:i-tm-inversion :k/inferred-across "weave automates exactly the one Topic Maps component whose hand-built nature was its historical limit — the knowledge layer (§1.1) — so TM's weakness is weave's core value proposition (§5.3)."]
+  [:i-tm-inversion :k/grounded-in :topic/topic-maps]
+  [:i-tm-inversion :k/grounded-in :topic/weave]
+  [:i-tm-inversion :k/grounded-in :topic/classification-burden]
+  [:i-tm-inversion :k/confidence "hoch — recombines the topic-maps anchor ('historically hand-built') and the weave anchor ('the layer TM needed a human to author is here derived by the machine')."]
+
+  [:i-hinge :k/label "The stable-ID split is the hinge for BOTH divergence and convergence"]
+  [:i-hinge :k/inferred-across "The stable-ID / mutable-label split powers both divergence-as-signal (it directly enables divergence, §4.3) and convergence-as-stability (via lookup-before-mint it damps drift toward a fixed point)."]
+  [:i-hinge :k/grounded-in :topic/stable-id]
+  [:i-hinge :k/grounded-in :topic/divergence]
+  [:i-hinge :k/grounded-in :topic/lookup-before-mint]
+  [:i-hinge :k/grounded-in :topic/convergence]
+  [:i-hinge :k/confidence "plausibel — recombines [stable-id enables divergence] + [stable-id enables lookup-before-mint] + [lookup-before-mint addresses convergence]; 'damps' re-attributed from the convergence tension."]
+
+  ;; -- rejected (kept as judgment artifacts) --
+  [:i-fca-check :k/label "Rejected: FCA could replace the coherence check"]
+  [:i-fca-check :k/rejected-inference "FCA and check are both structural machinery, so FCA could serve as the coherence guard."]
+  [:i-fca-check :k/grounded-in :topic/fca]
+  [:i-fca-check :k/grounded-in :topic/check]
+  [:i-fca-check :k/confidence "VERWORFEN: no fact links FCA (an optional offline split/merge suggestion, §4.4) to check's invariant verification (§4.2); distinct roles, and the link is unstated."]
+
+  [:i-repro-eval :k/label "Rejected: non-reproducibility means weave cannot be evaluated"]
+  [:i-repro-eval :k/rejected-inference "Because reproducibility is explicitly not a goal, weave cannot be scientifically evaluated."]
+  [:i-repro-eval :k/grounded-in :topic/reproducibility]
+  [:i-repro-eval :k/grounded-in :topic/check]
+  [:i-repro-eval :k/confidence "VERWORFEN: imports the world-knowledge premise that reproducibility is required for evaluation; contradicted by [check addresses fidelity] and [groundedness addresses insight-layer]."]]}

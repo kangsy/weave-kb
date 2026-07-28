@@ -1,0 +1,16 @@
+{:version 0
+ :concepts
+ [{:id :k/part-of      :label "part-of"      :definition "Partonomic membership."}
+  {:id :k/concerns     :label "concerns"     :definition "Entity an action refers to."}
+  {:id :k/next-action  :label "next-action"  :definition "Next concrete action."}
+  {:id :k/blocked-by   :label "blocked-by"   :definition "Missing condition."}
+  {:id :k/needs-context :label "needs-context" :definition "GTD context."}
+  {:id :k/last-touched :label "last-touched" :definition "Date of last journal entry."}
+  {:id :k/label        :label "label"        :definition "Human-readable name."}
+  {:id :k/source       :label "source"       :definition "Journal source binding."}
+  {:id :k/split-of     :label "split-of"     :definition "Split descendant of object."}
+  {:id :k/merged-into  :label "merged-into"  :definition "Merged into object."}
+  {:id :k/digest       :label "digest"       :definition "Session-authored 'where it stands' digest; shown by recap."}
+  {:id :k/structure-review :label "structure-review" :definition "Latest keep/change structural judgment; shown by topics."}]
+ :contexts
+ [{:id :ctx/user :label "@user" :definition "Always available."}]}

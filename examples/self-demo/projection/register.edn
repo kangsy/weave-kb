@@ -1,0 +1,77 @@
+;; Self-demo register — weave projected onto its own conceptual docs.
+;; Seed backbone (v1) + descriptive predicates minted during this ingest pass.
+
+{:version 2
+ :concepts
+ [{:id :k/part-of
+   :label "part-of"
+   :definition "Partonomic membership: the subject is part of the object."}
+  {:id :k/concerns
+   :label "concerns"
+   :definition "The entity an action or fact refers to."}
+  {:id :k/next-action
+   :label "next-action"
+   :definition "The next concrete action to move an entity forward. Deliberately replaces a status enum."}
+  {:id :k/blocked-by
+   :label "blocked-by"
+   :definition "A missing artifact or condition that currently prevents the next action."}
+  {:id :k/needs-context
+   :label "needs-context"
+   :definition "GTD context: a condition (place/device/person) under which an action is doable. Matched against the session's ambient context."}
+  {:id :k/last-touched
+   :label "last-touched"
+   :definition "Date of the most recent journal entry for an entity (basis for stale detection)."}
+  {:id :k/label
+   :label "label"
+   :definition "Human-readable name of an entity. Mutable mirror of the entity's current identity; the opaque id is the identity, never the label."}
+  {:id :k/source
+   :label "source"
+   :definition "Binding from an entity to its journal source location (path within the space). May be multi-valued. The journal directory is an opaque, rebuildable index; identity never lives in the path."}
+  {:id :k/split-of
+   :label "split-of"
+   :definition "Genealogy: the subject entity is a descendant produced by splitting the object entity. The object thereby becomes superseded (no longer current) but remains queryable for its history."}
+  {:id :k/merged-into
+   :label "merged-into"
+   :definition "Genealogy: the subject entity was merged into the object entity. The subject thereby becomes superseded (no longer current)."}
+  {:id :k/digest
+   :label "digest"
+   :definition "Short, session-authored 'where it stands' digest of an entity (current state, not history)."}
+  {:id :k/structure-review
+   :label "structure-review"
+   :definition "Latest structural judgment for an entity: keep or change the current structure. A short verdict line."}
+
+  ;; --- KB backbone (seed) ---
+  {:id :k/tension
+   :label "tension"
+   :definition "A deliberately UNRESOLVED contradiction/tension — outward vs internal reading, or two source statements that disagree. Kept, not resolved. Attach to a representative subject entity."}
+  {:id :k/caution
+   :label "caution"
+   :definition "A caveat/nuance about an entity, incl. a source's own confidence/status tags carried as CONTENT (never as system trust)."}
+  {:id :k/inferred-across
+   :label "inferred-across"
+   :definition "PROVENANCE MARKER on a reified insight entity (:i-*): AI-synthesized ACROSS the map — stated in NO document. Value = the claim. Never output as truth."}
+  {:id :k/grounded-in
+   :label "grounded-in"
+   :definition "An insight rests on this object entity/fact (traceability = groundedness). Value is an entity handle."}
+  {:id :k/confidence
+   :label "confidence"
+   :definition "Confidence of an inference + adversarial-check result. Content, not system trust."}
+  {:id :k/rejected-inference
+   :label "rejected-inference"
+   :definition "PROVENANCE MARKER on a reified insight that did NOT survive the adversarial check — kept as a judgment artifact."}
+
+  ;; --- descriptive predicates minted this pass (lookup-before-mint: none of the above fit) ---
+  {:id :k/addresses
+   :label "addresses"
+   :definition "The subject (a mechanism) addresses or is offered as a solution to the object (a problem or requirement). Object is an entity handle."}
+  {:id :k/contrasts-with
+   :label "contrasts-with"
+   :definition "The source deliberately opposes the subject to the object approach (X is chosen/preferred over Y, or X avoids Y). Object is an entity handle."}
+  {:id :k/enables
+   :label "enables"
+   :definition "The subject makes the object property, capability, or mechanism possible. Object is an entity handle."}
+  {:id :k/anchor
+   :label "anchor"
+   :definition "An external precedent, analogy, or scientific anchor the source cites for this entity, carried as CONTENT (not a claim of formal equivalence). Value is a string."}]
+
+ :contexts []}

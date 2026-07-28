@@ -1,0 +1,16 @@
+{:facts
+ [;; dangling part-of (Ziel existiert nicht als Subjekt)
+  [:topic/orphan :k/label "Waise"]
+  [:topic/orphan :k/part-of :topic/does-not-exist]
+  ;; part-of-Zyklus
+  [:topic/loop-a :k/part-of :topic/loop-b]
+  [:topic/loop-b :k/part-of :topic/loop-a]
+  ;; Genealogie ins Leere
+  [:topic/x :k/split-of :topic/ghost]
+  ;; abgelöste Entität mit offener next-action
+  [:topic/dead :k/label "tot"]
+  [:topic/dead :k/merged-into :topic/orphan]
+  [:action/a9 :k/next-action "sollte nicht erscheinen"]
+  [:action/a9 :k/concerns :topic/dead]
+  ;; Journal-Quelle fehlt
+  [:topic/orphan :k/source "journal/missing.md"]]}

@@ -1,0 +1,45 @@
+{:facts
+ [;; --- abgelöster Ur-Knoten E1, gesplittet ---
+  [:topic/e1 :k/label "Nord-Rosen (Ur-Beet)"]
+  [:topic/e1 :k/last-touched "2026-01-01"]        ;; abgelöst + alt → darf NICHT als stale gemeldet werden
+  [:topic/nord :k/split-of :topic/e1]
+  [:topic/nord-rosen :k/split-of :topic/e1]
+  ;; --- Dach Nord + Kinder ---
+  [:topic/nord :k/label "Nord"]
+  [:topic/nord :k/structure-review "2026-07-25 · beibehalten · zwei Kinder, Beete stabil"]
+  [:topic/nord-rosen :k/label "Rosen"]
+  [:topic/nord-rosen :k/part-of :topic/nord]
+  [:topic/nord-tulpen :k/label "Tulpen"]
+  [:topic/nord-tulpen :k/part-of :topic/nord]
+  [:topic/nord-tulpen :k/digest "Tulpen-Beet gepflegt; der Saison-Katalog wartet extern auf ein Lieferanten-Review."]
+  ;; --- Dach Süd + Kinder (gleiche Labels, andere IDs) ---
+  [:topic/sued :k/label "Süd"]
+  [:topic/sued-rosen :k/label "Rosen"]
+  [:topic/sued-rosen :k/part-of :topic/sued]
+  [:topic/sued-tulpen :k/label "Tulpen"]
+  [:topic/sued-tulpen :k/part-of :topic/sued]
+  ;; --- gemergte (abgelöste) Entität ---
+  [:topic/old-notes :k/label "alte Notizen"]
+  [:topic/old-notes :k/merged-into :topic/nord-tulpen]
+  ;; --- aktuelle Aktionen ---
+  [:action/a1 :k/next-action "nächste Lieferung protokollieren"]
+  [:action/a1 :k/concerns :topic/nord-tulpen]
+  [:action/a2 :k/next-action "Beet-Plan als Diagramm exportieren"]
+  [:action/a2 :k/concerns :topic/sued-rosen]
+  [:action/a2 :k/needs-context :ctx/mac]
+  ;; blocked-by-Aktion (Kontext erfüllt, aber extern blockiert → muss Waiting sein)
+  [:action/blk :k/next-action "Saison-Katalog einreichen"]
+  [:action/blk :k/concerns :topic/nord-tulpen]
+  [:action/blk :k/blocked-by "Lieferanten-Review läuft"]
+  ;; nackte (namespace-lose) Topic-ID → muss als Thema erkannt werden
+  [:standalone :k/label "Standalone-Beet (nackte ID)"]
+  ;; --- Journal-Quellen ---
+  [:topic/nord :k/source "journal/nord.md"]
+  [:topic/nord-rosen :k/source "journal/nord-rosen.md"]
+  [:topic/nord-tulpen :k/source "journal/nord-tulpen.md"]
+  [:topic/nord-tulpen :k/source "journal/nord-tulpen-2.md"]  ;; mehrwertig → recap wählt neuesten
+  [:topic/sued :k/source "journal/sued.md"]
+  [:topic/sued-rosen :k/source "journal/sued-rosen.md"]
+  [:topic/sued-tulpen :k/source "journal/sued-tulpen.md"]
+  ;; abgelöste Entität MIT Quelle: standardmäßig eingeklappt, per --all enthüllt
+  [:topic/old-notes :k/source "journal/old-notes.md"]]}
