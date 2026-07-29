@@ -1,144 +1,144 @@
-# Weave — Betriebs-Protokoll (Runbook für Sessions)
+# Weave — Operating Protocol (Runbook for Sessions)
 
-Wie eine Claude-Session einen Weave-**Space** bedient. Setzt das Konzept aus
-[`whitepaper.md`](whitepaper.md) voraus. Annahme (bewusst, Phase 1):
-**alle Journal-Änderungen passieren durch Claude-Sessions.**
+How a Claude session operates on a Weave **Space**. Assumes the concept from
+[`whitepaper.md`](whitepaper.md). Assumption (deliberate, Phase 1):
+**all journal changes happen through Claude sessions.**
 
-## Voraussetzungen
+## Prerequisites
 
-- `babashka` (`bb`) und die `weave`-CLI im Pfad (aus dem Weave-Engine-Repo).
-- Ein Space-Verzeichnis mit `journal/`, `projection/` und `space.edn`.
-- Space auflösen: **einmal pro Rechner** `weave register /pfad/zum/space` (schreibt die
-  maschinen-lokale Config `~/.config/weave/config.edn`). Danach findet `weave` den Space
-  von überall — keine cwd-Abhängigkeit. Override: `--space <pfad>` oder `$WEAVE_SPACE`.
+- `babashka` (`bb`) and the `weave` CLI on the path (from the Weave engine repo).
+- A space directory with `journal/`, `projection/` and `space.edn`.
+- Resolve the space: **once per machine** run `weave register /path/to/space` (writes the
+  machine-local config `~/.config/weave/config.edn`). After that `weave` finds the space
+  from anywhere — no cwd dependency. Override: `--space <path>` or `$WEAVE_SPACE`.
 
-## Kommandos
+## Commands
 
 ```
-weave overview                       # kontextbewusst: was geht jetzt
-weave topics                         # themenzentriert: was wird getrackt (Hierarchie)
-weave journal [--brief]              # rückblickend: letzter Journal-Eintrag je Projekt
-weave check                          # Kohärenz gegen das Register
-weave divergence <dirA> <dirB>       # zwei Projektionen kontrastieren
+weave overview                       # context-aware: what can be done now
+weave topics                         # topic-centric: what is being tracked (hierarchy)
+weave journal [--brief]              # retrospective: latest journal entry per project
+weave check                          # coherence against the register
+weave divergence <dirA> <dirB>       # contrast two projections
 ```
 
-## Ablauf einer Session, die an einem getrackten Projekt arbeitet
+## Flow of a session working on a tracked project
 
-1. **Stand holen & Kontext aufnehmen.** Im Space zuerst `git pull` (Stand der anderen
-   Rechner holen). Dann `weave overview` — zeigt, was auf *diesem* Rechner machbar ist
-   und was wartet. Dann die reale Arbeit tun.
+1. **Get the current state & take in context.** In the space, first `git pull` (fetch the
+   state from the other machines). Then `weave overview` — shows what is actionable on
+   *this* machine and what is waiting. Then do the actual work.
 
-2. **Journal fortschreiben (Prosa, append-only).** Beim Abschluss substanzieller Arbeit
-   einen Eintrag anhängen — natürliche Sprache, datiert:
-   `- YYYY-MM-DD HH:MM: …` (lokale Zeit; via `date '+%Y-%m-%d %H:%M'`). Der Zeitstempel
-   macht `journal` intraday-genau.
-   **Eintrag lesbar strukturieren** (so viel Struktur wie Punkte, *kein* starres Schema):
-   die **erste Zeile** ist die Schlagzeile in *einem* Satz — sie steht auch allein für
-   `journal --brief`. Gibt es mehrere Punkte, darunter **Unterpunkte als `-`-Bullets**
-   (z. B. Ursache / Fix / nächster Schritt / Blocker); Absätze durch **Leerzeilen**.
-   `journal` rendert Schlagzeile, Bullets und Absätze terminal-lesbar (Inline-Markdown
-   wird im echten Terminal als ANSI dargestellt — `**fett**`, `` `code` ``, `[Text](url)`;
-   gepipt/`NO_COLOR`/`WEAVE_STYLE=0` bleibt das Markdown roh, Zeilen werden umgebrochen) —
-   ein einziger dichter Block bleibt aber ein Block. Fließtext ist ok, wo es keine Teilpunkte gibt: Struktur folgt dem Inhalt, sie
-   zwingt ihn nicht.
+2. **Extend the journal (prose, append-only).** On completing substantial work, append an
+   entry — natural language, dated:
+   `- YYYY-MM-DD HH:MM: …` (local time; via `date '+%Y-%m-%d %H:%M'`). The timestamp
+   makes `journal` intraday-precise.
+   **Structure the entry readably** (as much structure as there are points, *no* rigid schema):
+   the **first line** is the headline in *one* sentence — it also stands alone for
+   `journal --brief`. If there are multiple points, put them below as **`-` bullets**
+   (e.g. cause / fix / next step / blocker); paragraphs separated by **blank lines**.
+   `journal` renders headline, bullets and paragraphs terminal-readably (inline Markdown
+   is displayed as ANSI in a real terminal — `**bold**`, `` `code` ``, `[text](url)`;
+   piped/`NO_COLOR`/`WEAVE_STYLE=0` leaves the Markdown raw, lines are wrapped) —
+   but a single dense block stays a block. Flowing text is fine where there are no sub-points: structure follows the content, it
+   does not force it.
 
    ```
-   - 2026-07-30 09:00: Import-Bug behoben, Version 1.2 freigegeben.
-     - Ursache: fehlende Feldvalidierung
-     - Fix: Validierung ergänzt, Release gebaut
-     - Nächster Schritt: auf Freigabe warten (blockiert)
+   - 2026-07-30 09:00: Import bug fixed, version 1.2 released.
+     - Cause: missing field validation
+     - Fix: added validation, built release
+     - Next step: wait for approval (blocked)
    ```
 
-   Das Journal ist ein opaker, maschinell verwalteter
-   Event-Log; das Verzeichnis-Layout ist eine **neu aufbaubare Sicht**, keine Identität.
-   **Entitäten aus der Prosa ableiten** (nicht der Mensch): welche Projekte/Subjekte betrifft
-   der Eintrag? Hierarchie („ein **Board** in Projekt A und ein gleichnamiges **Board**
-   in Projekt B" — gleicher Name, zwei Entitäten) ist der ablösbare Fakt `:k/part-of` —
-   niemals im ID- oder Pfadnamen codiert.
-   **First-Touch = kein Sonderfall:** auch ein *neues* Projekt (auch eine neue Top-Level-
-   Domäne) wird beim ersten substanziellen Fortschritt autonom aufgenommen — **ohne
-   Rückfrage, ohne gesonderten Hinweis**. Ein Projekt muss nicht vorab „erfasst" sein;
-   Tracking emergiert aus der Prosa. Nur wenn etwas bewusst *nicht* getrackt werden soll,
-   ist das die ausdrückliche (seltene) Ausnahme.
+   The journal is an opaque, machine-managed
+   event log; the directory layout is a **rebuildable view**, not an identity.
+   **Derive entities from the prose** (not the human): which projects/subjects does the
+   entry concern? Hierarchy ("a **board** in project A and an identically named **board**
+   in project B" — same name, two entities) is the detachable fact `:k/part-of` —
+   never encoded in the ID or path name.
+   **First-touch = not a special case:** even a *new* project (even a new top-level
+   domain) is taken on autonomously at the first substantial progress — **without
+   asking, without a separate note**. A project need not be "registered" in advance;
+   tracking emerges from the prose. Only when something is deliberately *not* to be tracked
+   is that the explicit (rare) exception.
 
-3. **Re-projizieren (Fakten aus dem Journal ableiten).** `projection/facts.edn`
-   aktualisieren. Zwingend:
-   - **lookup-before-mint (Prädikate UND Entitäten)**: vor dem Vergeben eines Prädikats
-     *oder* dem Anlegen einer Entität zuerst `projection/register.edn` bzw. die bestehende
-     Faktenbasis prüfen und eine bestehende `:id` wiederverwenden; nur wenn nichts passt,
-     neu minten. IDs sind **opak und hierarchie-frei**; der lesbare Name lebt als
-     `:k/label`-Fakt. Das verhindert, dass dieselbe „Komponente" in zwei Entitäten zerfällt —
-     es ist **Duplikat-Schutz, kein Argument gegen das Anlegen neuer Projekte.**
-     Brauchst du ein Prädikat, das der Space noch **nicht** kennt, greift dieselbe Regel:
-     erst nach einem **bestehenden Äquivalent** suchen und es wiederverwenden; nur wenn
-     keins existiert, ins Register minten (Version erhöhen). Ein Fakt mit register-fremdem
-     Prädikat macht `check` rot — genau das ist das Signal, zu minten *oder* umzuentscheiden.
-   - **Art per Namespace, Hierarchie per Fakt.** Reservierte Namespaces markieren die
-     *Art*: `:action/…`, `:ctx/…`, `:artifact/…`. Eine Projekt-/Themen-Entität ist jede
-     andere Keyword-ID — nackt (`:thema`) oder mit beliebigem, nicht-reserviertem
-     Namespace; der Namespace codiert **nie** die Elternschaft. **Dach-Entitäten explizit
-     deklarieren** (mind. ein `:k/label`-Fakt): ein `:k/part-of`-Ziel, das nur als Objekt
-     auftaucht, ist keine bekannte Entität und `check` meldet es (Dangling part-of).
-   - **Alt-IDs sind harmlos.** Bestehende hierarchie-codierende IDs (`:proj/legacy-child`)
-     bleiben unangetastet: die ID ist ein opaker Handle, ihr Präfix wird nie als Hierarchie
-     gelesen. IDs nie umbenennen; ein echtes Um-IDen wäre ein `merge` (`:k/merged-into`).
-   - **Prosa-Bindung folgt der Space-Konvention, nicht dem Runbook.** *Wie* die Projektion
-     ihre Prosa/Herkunft bindet, ist **emergent im Space-Register** — kein vom Runbook
-     vorgeschriebener Prädikatname. Der Space nutzt dafür `:projected-from`; per
-     `lookup-before-mint` **wiederverwenden**, kein konkurrierendes Prädikat minten.
-     (Der Engine-Seed *bietet* ein per-Entität-`:k/source` an — nur ein Vorschlag für
-     *neue* Spaces, bestehenden Konventionen nie aufgezwungen.) Sichtbarkeit hängt an
-     keiner Bindung (foundations §3.3c); ungebundene Journal-Dateien bleiben sichtbar.
-   - **Evolution protokollieren.** Wird ein Projekt zum Dach oder umgekehrt umstrukturiert,
-     die Operation als Genealogie festhalten: `re-parent` (Fakt `:k/part-of` ändern, ID
-     bleibt), `split` (neue Entitäten + `:k/split-of` auf den Vorfahren; Vorfahr bleibt
-     unsterblich abfragbar), `merge` (`:k/merged-into`). „Zum Dach befördern" ist entweder
-     re-parent-mit-Kind *oder* split — die Prosa entscheidet.
-   - **Struktur-Urteil fällen (bei substanzieller Änderung der Faktenlage eines Projekts).**
-     Zurücktreten und *bewerten*: passt die aktuelle Struktur noch zu den angesammelten
-     Fakten — **beibehalten oder ändern?** Das ist ein **echtes Urteil, keine Regel** (kein
-     „≥N Actions → Dach"). Leitplanken, nicht Automatik: Tickets/Arbeitsitems bleiben
-     **Actions** (vergänglich, werden erledigt entfernt); **Subprojekte sind dauerhafte
-     Flächen**; ein Projekt wird zum **Dach**, wenn seine Fäden zu solchen Flächen clustern.
-     Das Verdikt festhalten: die **Begründung ins Journal** (Prosa, Historie), das kurze
-     Ergebnis als `:k/structure-review` („`<Datum>` · `beibehalten|geändert` · `<knapp>`").
-     **„Beibehalten" ist genauso wertvoll wie „ändern"** — es macht die Struktur zu einer
-     *bewerteten*, nicht bloß angesammelten. `topics` zeigt das Verdikt; ein altes Prüf-
-     Datum stupst beim nächsten Mal an.
-   - **Stabile IDs behalten.** Labels dürfen sich ändern, IDs nie.
-   - Kontexte (`:ctx/...`) ebenfalls im Register definieren; das Ambient-Mapping steht
+3. **Re-project (derive facts from the journal).** Update `projection/facts.edn`.
+   Mandatory:
+   - **lookup-before-mint (predicates AND entities)**: before assigning a predicate
+     *or* creating an entity, first check `projection/register.edn` or the existing
+     fact base and reuse an existing `:id`; only mint anew if nothing fits. IDs are
+     **opaque and hierarchy-free**; the readable name lives as a
+     `:k/label` fact. This prevents the same "component" from splitting into two entities —
+     it is **duplicate protection, not an argument against creating new projects.**
+     If you need a predicate the space does **not** yet know, the same rule applies:
+     first search for an **existing equivalent** and reuse it; only if none exists,
+     mint it into the register (bump the version). A fact with a register-foreign
+     predicate turns `check` red — that is exactly the signal to mint *or* to reconsider.
+   - **Kind via namespace, hierarchy via fact.** Reserved namespaces mark the
+     *kind*: `:action/…`, `:ctx/…`, `:artifact/…`. A project/topic entity is any
+     other keyword ID — bare (`:topic`) or with any non-reserved
+     namespace; the namespace **never** encodes parenthood. **Declare umbrella entities
+     explicitly** (at least one `:k/label` fact): a `:k/part-of` target that appears
+     only as an object is not a known entity and `check` reports it (dangling part-of).
+   - **Legacy IDs are harmless.** Existing hierarchy-encoding IDs (`:proj/legacy-child`)
+     stay untouched: the ID is an opaque handle, its prefix is never
+     read as hierarchy. Never rename IDs; a real re-ID would be a `merge` (`:k/merged-into`).
+   - **Prose binding follows the space convention, not the runbook.** *How* the projection
+     binds its prose/provenance is **emergent in the space register** — not a predicate name
+     prescribed by the runbook. This space uses `:projected-from` for it; **reuse** it via
+     `lookup-before-mint`, do not mint a competing predicate.
+     (The engine seed *offers* a per-entity `:k/source` — merely a suggestion for
+     *new* spaces, never imposed on existing conventions.) Visibility depends on
+     no binding (foundations §3.3c); unbound journal files stay visible.
+   - **Log evolution.** When a project is restructured into an umbrella or vice versa,
+     record the operation as genealogy: `re-parent` (change the `:k/part-of` fact, ID
+     stays), `split` (new entities + `:k/split-of` on the ancestor; the ancestor stays
+     immortally queryable), `merge` (`:k/merged-into`). "Promote to umbrella" is either
+     re-parent-with-child *or* split — the prose decides.
+   - **Make a structure judgment (on substantial change to a project's fact situation).**
+     Step back and *assess*: does the current structure still fit the accumulated
+     facts — **keep or change?** This is a **real judgment, not a rule** (no
+     "≥N actions → umbrella"). Guardrails, not automatics: tickets/work items stay
+     **actions** (transient, removed when done); **subprojects are permanent
+     surfaces**; a project becomes an **umbrella** when its threads cluster into such surfaces.
+     Record the verdict: the **rationale into the journal** (prose, history), the short
+     result as `:k/structure-review` ("`<date>` · `kept|changed` · `<brief>`").
+     **"Keep" is just as valuable as "change"** — it makes the structure an
+     *assessed* one, not merely an accumulated one. `topics` shows the verdict; an old review
+     date nudges next time.
+   - **Keep stable IDs.** Labels may change, IDs never.
+   - Contexts (`:ctx/...`) are likewise defined in the register; the ambient mapping is
      in `space.edn` (`:ambient`).
-   - `:k/last-touched` der berührten Entität auf das heutige Datum setzen.
-   - **Stand-Digest (optional, empfohlen bei Mehr-Faden-Projekten).** Je berührter
-     Entität einen kurzen `:k/digest`-Satz pflegen („wo steht es" — aktueller Stand, kein
-     Verlauf). Das ist die Prosa, die `weave recap` zeigt; fehlt sie, fällt recap
-     mechanisch auf `:k/blocked-by`/`:k/next-action` zurück (bei vielen Actions als Liste).
+   - Set `:k/last-touched` of the touched entity to today's date.
+   - **State digest (optional, recommended for multi-thread projects).** For each touched
+     entity, maintain a short `:k/digest` sentence ("where it stands" — current state, no
+     history). This is the prose that `weave recap` shows; if it is missing, recap falls
+     back mechanically to `:k/blocked-by`/`:k/next-action` (as a list when there are many actions).
 
-4. **Prüfen.** `weave check` — muss `✓` liefern. Findings vor dem Commit beheben.
+4. **Check.** `weave check` — must return `✓`. Fix findings before the commit.
 
-5. **Committen und sofort pushen.** Journal + Projektion zusammen, sprechende Message,
-   dann `git push`. **Ein nicht gepushter Commit ist kein Sync** — nie ungepusht lassen.
+5. **Commit and push immediately.** Journal + projection together, a meaningful message,
+   then `git push`. **An unpushed commit is not a sync** — never leave it unpushed.
 
-## Optional: Replay + Divergenz (epistemische Sicht)
+## Optional: Replay + divergence (epistemic view)
 
-Eine **frische** Projektion in einen Schnappschuss-Ordner schreiben und kontrastieren:
+Write a **fresh** projection into a snapshot folder and contrast:
 
 ```
-weave divergence projection snapshots/<datum>
+weave divergence projection snapshots/<date>
 ```
 
-Kosmetische Divergenz (gleiche ID, anderes Label) ist Rauschen; semantische (neues
-Konzept, verfeinerte/aufgetauchte Fakten) ist Signal.
+Cosmetic divergence (same ID, different label) is noise; semantic divergence (new
+concept, refined/surfaced facts) is signal.
 
-## Regeln (aus den Foundations)
+## Rules (from the foundations)
 
-- **Reproduzierbarkeit ist kein Ziel** — Treue + Kohärenz schon. Divergenz ist ok.
-- **Keine Top-down-Taxonomie**, keine manuellen Tags/Status durch den Nutzer.
-- **Register ist versioniert** und Teil der Faktenmenge; bei Verfeinerung
-  `:supersedes`/`:refines` am Konzept pflegen.
-- **FCA** nur optional/offline als Split/Merge-Vorschlag — kein Laufzeit-Verband.
+- **Reproducibility is not a goal** — fidelity + coherence are. Divergence is fine.
+- **No top-down taxonomy**, no manual tags/status by the user.
+- **The register is versioned** and part of the fact set; on refinement maintain
+  `:supersedes`/`:refines` on the concept.
+- **FCA** only optional/offline as a split/merge suggestion — no runtime lattice.
 
-## Wachpunkte
+## Watch points
 
-- Nichtdeterminismus/Konvergenz der Re-Projektion (Foundations §9.1) — beobachten.
-- Bei großem Register: Full-Replay vermeiden, inkrementell re-projizieren.
+- Nondeterminism/convergence of the re-projection (foundations §9.1) — observe it.
+- With a large register: avoid full replay, re-project incrementally.

@@ -145,14 +145,14 @@
   [:i-double-load :k/grounded-in :topic/lookup-before-mint]
   [:i-double-load :k/grounded-in :topic/convergence]
   [:i-double-load :k/grounded-in :topic/classification-burden]
-  [:i-double-load :k/confidence "hoch — recombination: [lookup-before-mint addresses convergence] ∩ the classification-burden tension ('displaced … reappears at scale as lookup-before-mint over thousands')."]
+  [:i-double-load :k/confidence "high — recombination: [lookup-before-mint addresses convergence] ∩ the classification-burden tension ('displaced … reappears at scale as lookup-before-mint over thousands')."]
 
   [:i-tm-inversion :k/label "Topic Maps' fatal weakness is precisely weave's value proposition"]
   [:i-tm-inversion :k/inferred-across "weave automates exactly the one Topic Maps component whose hand-built nature was its historical limit — the knowledge layer (§1.1) — so TM's weakness is weave's core value proposition (§5.3)."]
   [:i-tm-inversion :k/grounded-in :topic/topic-maps]
   [:i-tm-inversion :k/grounded-in :topic/weave]
   [:i-tm-inversion :k/grounded-in :topic/classification-burden]
-  [:i-tm-inversion :k/confidence "hoch — recombines the topic-maps anchor ('historically hand-built') and the weave anchor ('the layer TM needed a human to author is here derived by the machine')."]
+  [:i-tm-inversion :k/confidence "high — recombines the topic-maps anchor ('historically hand-built') and the weave anchor ('the layer TM needed a human to author is here derived by the machine')."]
 
   [:i-hinge :k/label "The stable-ID split is the hinge for BOTH divergence and convergence"]
   [:i-hinge :k/inferred-across "The stable-ID / mutable-label split powers both divergence-as-signal (it directly enables divergence, §4.3) and convergence-as-stability (via lookup-before-mint it damps drift toward a fixed point)."]
@@ -160,17 +160,17 @@
   [:i-hinge :k/grounded-in :topic/divergence]
   [:i-hinge :k/grounded-in :topic/lookup-before-mint]
   [:i-hinge :k/grounded-in :topic/convergence]
-  [:i-hinge :k/confidence "plausibel — recombines [stable-id enables divergence] + [stable-id enables lookup-before-mint] + [lookup-before-mint addresses convergence]; 'damps' re-attributed from the convergence tension."]
+  [:i-hinge :k/confidence "plausible — recombines [stable-id enables divergence] + [stable-id enables lookup-before-mint] + [lookup-before-mint addresses convergence]; 'damps' re-attributed from the convergence tension."]
 
   ;; -- rejected (kept as judgment artifacts) --
   [:i-fca-check :k/label "Rejected: FCA could replace the coherence check"]
   [:i-fca-check :k/rejected-inference "FCA and check are both structural machinery, so FCA could serve as the coherence guard."]
   [:i-fca-check :k/grounded-in :topic/fca]
   [:i-fca-check :k/grounded-in :topic/check]
-  [:i-fca-check :k/confidence "VERWORFEN: no fact links FCA (an optional offline split/merge suggestion, §4.4) to check's invariant verification (§4.2); distinct roles, and the link is unstated."]
+  [:i-fca-check :k/confidence "REJECTED: no fact links FCA (an optional offline split/merge suggestion, §4.4) to check's invariant verification (§4.2); distinct roles, and the link is unstated."]
 
   [:i-repro-eval :k/label "Rejected: non-reproducibility means weave cannot be evaluated"]
   [:i-repro-eval :k/rejected-inference "Because reproducibility is explicitly not a goal, weave cannot be scientifically evaluated."]
   [:i-repro-eval :k/grounded-in :topic/reproducibility]
   [:i-repro-eval :k/grounded-in :topic/check]
-  [:i-repro-eval :k/confidence "VERWORFEN: imports the world-knowledge premise that reproducibility is required for evaluation; contradicted by [check addresses fidelity] and [groundedness addresses insight-layer]."]]}
+  [:i-repro-eval :k/confidence "REJECTED: imports the world-knowledge premise that reproducibility is required for evaluation; contradicted by [check addresses fidelity] and [groundedness addresses insight-layer]."]]}

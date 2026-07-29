@@ -1,5 +1,5 @@
-# Süd
+# South
 
 ## Journal
 
-- 2026-07-19 11:00: Süd als eigenes Dach etabliert; Tulpen-Beet hinzugekommen.
+- 2026-07-19 11:00: Established South as its own umbrella; added a Tulips bed.

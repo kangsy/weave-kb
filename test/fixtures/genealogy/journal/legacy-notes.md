@@ -1,5 +1,5 @@
-# Legacy-Notiz (ungebunden)
+# Legacy note (unbound)
 
 ## Journal
 
-- 2026-07-16 12:00: Eintrag **ohne** :k/source-Bindung — siehe [Doku](http://d) — muss trotzdem sichtbar sein.
+- 2026-07-16 12:00: Entry **without** a :k/source binding — see [docs](http://d) — must still be visible.

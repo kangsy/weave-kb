@@ -365,15 +365,15 @@ each generated and then adversarially grounded, kept with a confidence gradient:
 ```
 Insights — survived (3):
 ● lookup-before-mint carries a double load: anti-drift damper AND displaced-classification residue
-    conf: hoch — [lookup-before-mint addresses convergence] ∩ the classification-burden
+    conf: high — [lookup-before-mint addresses convergence] ∩ the classification-burden
           tension ('displaced … reappears at scale as lookup-before-mint over thousands')
 ● Topic Maps' fatal weakness is precisely weave's value proposition
-    conf: hoch — [topic-maps: 'historically hand-built'] + [weave: 'the layer TM needed a
+    conf: high — [topic-maps: 'historically hand-built'] + [weave: 'the layer TM needed a
           human to author is here derived by the machine']
-● The stable-ID split is the hinge for BOTH divergence and convergence   (conf: plausibel)
+● The stable-ID split is the hinge for BOTH divergence and convergence   (conf: plausible)
 — rejected, kept as judgment artifacts (2):
 ● Rejected: FCA could replace the coherence check
-    VERWORFEN — no fact links FCA (offline split/merge suggestion) to check's invariant layer
+    REJECTED — no fact links FCA (offline split/merge suggestion) to check's invariant layer
 ```
 
 The survivors are genuine cross-section syntheses; the rejects are retained, with reasons,
@@ -413,7 +413,7 @@ very whitepaper* (§5.4). Three things held.
    anti-drift damper and the residue of the displaced classification burden, or that Topic
    Maps' fatal weakness is exactly weave's value proposition — while an adversarial verifier,
    told to refute by default, discarded the two candidates that leaned on world knowledge or
-   an unstated link. The output is a confidence gradient (*hoch → plausibel → rejected*),
+   an unstated link. The output is a confidence gradient (*high → plausible → rejected*),
    surfaced rather than flattened.
 3. **The judgment is itself an artifact.** Rejected inferences are kept, with their reasons,
    as visible knowledge about how the model judged — not silently discarded.

@@ -14,86 +14,87 @@
 
 (println "topics (genealogy):")
 (let [o (weave "genealogy" "topics")]
-  (t "zeigt Nord"        (has? o "Nord"))
-  (t "zeigt Süd"        (has? o "Süd"))
-  (t "zeigt Rosen"  (has? o "Rosen"))
-  (t "zeigt Tulpen"     (has? o "Tulpen"))
-  (t "versteckt Ur-Beet (split-Vorfahr)" (not (has? o "Ur-Beet")))
-  (t "versteckt merged-away Entität"        (not (has? o "alte Notizen")))
-  (t "nackte-ID Topic sichtbar"             (has? o "Standalone-Beet"))
-  (t "zeigt Struktur-Prüf-Verdikt"          (and (has? o "geprüft") (has? o "beibehalten"))))
+  (t "shows North"        (has? o "North"))
+  (t "shows South"        (has? o "South"))
+  (t "shows Roses"        (has? o "Roses"))
+  (t "shows Tulips"       (has? o "Tulips"))
+  (t "hides origin bed (split ancestor)"   (not (has? o "origin bed")))
+  (t "hides merged-away entity"            (not (has? o "old notes")))
+  (t "bare-id topic visible"               (has? o "Standalone bed"))
+  (t "shows structure-review verdict"      (and (has? o "reviewed") (has? o "kept"))))
 
 (println "overview (genealogy):")
 (let [o (weave "genealogy" "overview")]
-  (t "zeigt aktuelle Aktion" (has? o "nächste Lieferung protokollieren"))
-  (t "nutzt Label statt roher ID" (and (has? o "[Tulpen]") (not (has? o ":topic/nord-tulpen"))))
-  (t "blocked-by-Aktion in Wartet, mit ⛔" (has? o "⛔ Lieferanten-Review")))
+  (t "shows current action" (has? o "log the next delivery"))
+  (t "uses label, not raw id" (and (has? o "[Tulips]") (not (has? o ":topic/nord-tulpen"))))
+  (t "blocked-by action in Waiting, with ⛔" (has? o "⛔ supplier review")))
 
-(println "check (genealogy, kohärent):")
+(println "check (genealogy, coherent):")
 (let [o (weave "genealogy" "check")]
-  (doseq [bad ["Dangling part-of" "Zyklus" "ins Leere" "Journal-Quelle fehlt" "offene next-action"]]
-    (t (str "keine Meldung: " bad) (not (has? o bad))))
-  (t "abgelöste e1 nicht als stale gemeldet" (not (has? o "Stale: :topic/e1"))))
+  (doseq [bad ["Dangling part-of" "cycle" "nowhere" "Journal source missing" "open next-action"]]
+    (t (str "no finding: " bad) (not (has? o bad))))
+  (t "superseded e1 not reported as stale" (not (has? o "Stale: :topic/e1"))))
 
 (println "check (drift):")
 (let [o (weave "drift" "check")]
-  (doseq [need ["Dangling part-of" "Zyklus" "ins Leere" "offene next-action" "Journal-Quelle fehlt"]]
-    (t (str "meldet: " need) (has? o need))))
+  (doseq [need ["Dangling part-of" "cycle" "nowhere" "open next-action" "Journal source missing"]]
+    (t (str "reports: " need) (has? o need))))
 
 (println "journal (genealogy):")
 (let [o (weave "genealogy" "journal")]
-  (t "journal listet Tulpen" (has? o "Tulpen"))
-  (t "journal wählt neuesten Eintrag über mehrere Quellen" (has? o "Doppelquelle-Test"))
-  (t "ungebundene Journal-Datei bleibt sichtbar" (has? o "Legacy-Notiz"))
-  (t "abgelöste Entität standardmäßig NICHT im journal" (not (has? o "alte Notizen")))
-  (t "gepipt: rohes Markdown bleibt erhalten (kein lossy Filter)" (and (has? o "**") (has? o "]("))))
+  (t "journal lists Tulips" (has? o "Tulips"))
+  (t "journal picks the newest entry across multiple sources" (has? o "Multi-source test"))
+  (t "unbound journal file stays visible" (has? o "Legacy note"))
+  (t "superseded entity not in journal by default" (not (has? o "old notes")))
+  (t "piped: raw markdown preserved (no lossy filter)" (and (has? o "**") (has? o "]("))))
 
 (println "journal --all (genealogy):")
 (let [o (weave "genealogy" "journal" "--all")]
-  (t "journal --all enthüllt abgelöste Entität, markiert"
-     (and (has? o "alte Notizen") (has? o "abgelöst"))))
+  (t "journal --all reveals superseded entity, marked"
+     (and (has? o "old notes") (has? o "superseded"))))
 
 (println "topics --all (genealogy):")
 (let [o (weave "genealogy" "topics" "--all")]
-  (t "topics --all zeigt abgelösten Split-Vorfahren" (has? o "Ur-Beet"))
-  (t "topics --all zeigt merged-away Entität" (has? o "alte Notizen")))
+  (t "topics --all shows superseded split ancestor" (has? o "origin bed"))
+  (t "topics --all shows merged-away entity" (has? o "old notes")))
 
-(println "journal (drift, fehlende Quelle):")
+(println "journal (drift, missing source):")
 (let [o (weave "drift" "journal")]
-  (t "journal crasht nicht bei fehlender Quelle" (has? o "Journal —")))
+  (t "journal does not crash on a missing source" (has? o "Journal —")))
 
 (println "recap (genealogy):")
 (let [o (weave "genealogy" "recap")]
-  (t "recap zeigt Projekte per Label" (has? o "Tulpen"))
-  (t "recap zeigt :k/digest-Prosa wenn vorhanden" (has? o "Tulpen-Beet gepflegt"))
-  (t "recap fällt mechanisch auf next-action zurück" (has? o "Beet-Plan als Diagramm exportieren"))
-  (t "recap versteckt abgelöste standardmäßig" (not (has? o "alte Notizen"))))
+  (t "recap shows projects by label" (has? o "Tulips"))
+  (t "recap shows :k/digest prose when present" (has? o "Tulips bed tended"))
+  (t "recap falls back mechanically to next-action" (has? o "export the bed plan as a chart"))
+  (t "recap hides superseded by default" (not (has? o "old notes"))))
 
 (println "recap --all (genealogy):")
 (let [o (weave "genealogy" "recap" "--all")]
-  (t "recap --all zeigt abgelöste, markiert" (and (has? o "alte Notizen") (has? o "abgelöst"))))
+  (t "recap --all shows superseded, marked" (and (has? o "old notes") (has? o "superseded"))))
 
-(println "styling (TTY-Erkennung):")
-(let [plain  (weave "genealogy" "journal")
+(println "styling (TTY detection):")
+(let [esc    (str (char 27))
+      plain  (weave "genealogy" "journal")
       styled (:out (p/sh ["bb" "weave" "--space" "test/fixtures/genealogy" "journal"]
                          {:extra-env {"WEAVE_STYLE" "1"}}))]
-  (t "gepipte Ausgabe ohne ANSI-Escapes" (not (str/includes? plain "[")))
-  (t "WEAVE_STYLE=1 erzeugt ANSI-Escapes"  (str/includes? styled "[")))
+  (t "piped output has no ANSI escapes" (not (str/includes? plain esc)))
+  (t "WEAVE_STYLE=1 produces ANSI escapes"  (str/includes? styled esc)))
 
-(println "init (frischer Space):")
+(println "init (fresh space):")
 (let [tmp (str "/tmp/weave-init-test-" (System/currentTimeMillis))]
   (p/sh ["bb" "weave" "init" tmp])
-  (t "space.edn angelegt"    (.exists (io/file tmp "space.edn")))
-  (t "facts.edn angelegt"    (.exists (io/file tmp "projection" "facts.edn")))
-  (t "journal/ angelegt"     (.isDirectory (io/file tmp "journal")))
-  (t "register aus Seed"     (str/includes? (slurp (io/file tmp "projection" "register.edn")) ":k/label"))
+  (t "space.edn created"     (.exists (io/file tmp "space.edn")))
+  (t "facts.edn created"     (.exists (io/file tmp "projection" "facts.edn")))
+  (t "journal/ created"      (.isDirectory (io/file tmp "journal")))
+  (t "register from seed"    (str/includes? (slurp (io/file tmp "projection" "register.edn")) ":k/label"))
   (let [o (:out (p/sh ["bb" "weave" "--space" tmp "check"]))]
-    (t "frischer Space check-grün" (str/includes? o "No violations")))
-  ;; ABBRUCH ohne Überschreiben, wenn space.edn schon existiert
+    (t "fresh space check-green" (str/includes? o "No violations")))
+  ;; ABORT without overwriting when space.edn already exists
   (spit (io/file tmp "projection" "facts.edn") "SENTINEL")
   (let [r (p/sh ["bb" "weave" "init" tmp])]
-    (t "init bricht bei existierendem Space ab" (not (zero? (:exit r))))
-    (t "init überschreibt nicht"                (= "SENTINEL" (slurp (io/file tmp "projection" "facts.edn"))))))
+    (t "init aborts on existing space" (not (zero? (:exit r))))
+    (t "init does not overwrite"       (= "SENTINEL" (slurp (io/file tmp "projection" "facts.edn"))))))
 
 (println)
 (if (zero? @failures)
