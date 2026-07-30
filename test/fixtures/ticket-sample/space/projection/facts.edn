@@ -1,0 +1,12 @@
+{:facts
+ [[:issue-42 :k/label "#42 Runner loses draft on reload without registration"]
+  [:issue-42 :k/source "journal/ticket.md"]
+  [:issue-42 :k/summary "Without registration, a browser reload drops in-progress data; expected behavior is save-and-resume."]
+  [:issue-42 :k/state "OPEN"]
+  [:issue-42 :k/labeled "bug"]
+  [:issue-42 :k/labeled "runner"]
+  [:issue-42 :k/reported-by :octo-dev]
+  [:issue-42 :k/assigned-to :maintainer-a]
+  [:issue-42 :k/next-action "Write the localStorage draft on first field change rather than on registration."]
+  [:octo-dev :k/label "octo-dev"] [:octo-dev :k/source "journal/ticket.md"]
+  [:maintainer-a :k/label "maintainer-a"] [:maintainer-a :k/source "journal/ticket.md"]]}

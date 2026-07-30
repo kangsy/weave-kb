@@ -109,6 +109,10 @@
   (t "view --verbatim expands summaries"      (not (has? (weave "neardup" "view" ":demo" "--verbatim") "near-identical")))
   (t "insights collapses near-dup claims"     (has? (weave "neardup" "insights") "(+1 near-identical)")))
 
+(println "ticket-sample (worked example):")
+(let [o (weave "ticket-sample/space" "check")]
+  (t "worked-example space is coherent" (has? o "No violations")))
+
 (println)
 (if (zero? @failures)
   (println "ALL PASS")

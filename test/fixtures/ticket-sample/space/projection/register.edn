@@ -1,0 +1,11 @@
+{:version 2
+ :concepts
+ [{:id :k/label :label "label" :definition "Human-readable name of an entity."}
+  {:id :k/source :label "source" :definition "Journal source binding (path within the space)."}
+  {:id :k/summary :label "summary" :definition "Grounded description of an entity from the source prose."}
+  {:id :k/reported-by :label "reported-by" :definition "The person who opened the ticket."}
+  {:id :k/assigned-to :label "assigned-to" :definition "A person assigned to the ticket."}
+  {:id :k/state :label "state" :definition "The ticket's current state (content, from the source)."}
+  {:id :k/labeled :label "labeled" :definition "A label the source applies to the ticket."}
+  {:id :k/next-action :label "next-action" :definition "A proposed next step stated in the thread."}]
+ :contexts []}
