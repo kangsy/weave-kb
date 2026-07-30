@@ -60,12 +60,15 @@ weave --space ~/my-kb tensions              # preserved contradictions
 weave --space ~/my-kb view <entity>         # everything about an entity + backlinks
 ```
 
-Two skills ship with weave and install into your Claude Code:
+Three skills ship with weave and install into your Claude Code:
 - **`weave-ingest`** — project a data source into faithful facts (`lookup-before-mint`,
   contradictions preserved, source tags kept as content not trust).
 - **`weave-insight`** — full-sweep inference with adversarial grounding: a generator
   proposes connections no single document states, a *separate skeptic* keeps only the
   grounded ones (survivors and reasoned rejects both persist).
+- **`weave-ticket`** — throw a GitHub ticket (issue/PR) at weave: it scaffolds an isolated
+  space for that ticket and projects its body + full comment thread into faithful facts in
+  one go (then offers `insights`).
 
 **Self-demo:** a ready-made example space lives in [`examples/self-demo/`](examples/self-demo/)
 — weave projected onto its own whitepaper. Run `weave --space examples/self-demo tensions`

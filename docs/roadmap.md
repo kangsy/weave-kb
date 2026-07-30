@@ -17,3 +17,8 @@ and adds a `:k/source` instead of a duplicate. "Flagged in 4 docs" becomes one n
 four sources — clean, provenance-preserving, and the source-count becomes a first-class
 salience signal. Needs the retrieval/embedding layer that entity lookup-before-mint also
 wants at scale. Composes with the view-time lens above.
+
+## GitHub ticket ingestion (weave-ticket) (shipped)
+`weave-ticket` fetches a GitHub issue/PR via `gh`, writes it as `journal/ticket.md` in its
+own isolated space `<base>/<owner>-<repo>-<number>/`, and projects it via the weave-ingest
+discipline. One ticket ⇒ one space; no cross-ticket accumulation.
