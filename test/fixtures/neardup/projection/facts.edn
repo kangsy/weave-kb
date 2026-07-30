@@ -1,0 +1,6 @@
+{:facts
+ [[:demo :k/label "Demo Product"]
+  [:demo :k/tension "Public label is 'enterprise SaaS platform' vs internal reality that the business is service-dominant (~90% of revenue)."]
+  [:demo :k/tension "Label says 'enterprise SaaS platform', but internally the business is service-dominant (~90% of revenue)."]
+  [:demo :k/tension "The 'enterprise SaaS platform' public label sits against an internal service-dominant reality (~90% service revenue)."]
+  [:demo :k/tension "Marketing claims 'no coding skills' while the internal readiness note says complex flows are really low-code and need coding."]]}

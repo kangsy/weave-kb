@@ -96,6 +96,16 @@
     (t "init aborts on existing space" (not (zero? (:exit r))))
     (t "init does not overwrite"       (= "SENTINEL" (slurp (io/file tmp "projection" "facts.edn"))))))
 
+(println "neardup (consolidation lens):")
+(let [d (weave "neardup" "tensions")
+      v (weave "neardup" "tensions" "--verbatim")]
+  (t "collapses near-duplicates to one entry with marker" (has? d "(+2 near-identical)"))
+  (t "keeps the distinct tension separate"                (has? d "no coding skills"))
+  (t "default shows 2 tension entries"     (= 2 (count (re-seq #"(?m)^● " d))))
+  (t "--verbatim shows all 4, no marker"   (and (= 4 (count (re-seq #"(?m)^● " v)))
+                                                (not (has? v "near-identical"))))
+  (t "check stays green on the fixture"    (has? (weave "neardup" "check") "No violations")))
+
 (println)
 (if (zero? @failures)
   (println "ALL PASS")

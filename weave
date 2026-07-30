@@ -119,6 +119,43 @@
         :else (recur (rest ws)
                      (if (empty? line) (first ws) (str line " " (first ws)))
                      out)))))
+;; --- near-duplicate consolidation (view-time lens; §3.4) --------------------
+(def ^:private sim-threshold 0.55)   ;; trigram-Jaccard ≥ this ⇒ near-duplicate
+(def ^:private min-cluster-len 20)   ;; normalized values shorter than this are never clustered
+
+(defn- norm-sim [s]
+  (-> (str s) str/lower-case (str/replace #"[^a-z0-9]+" " ") str/trim))
+
+(defn- trigrams [s]
+  (let [n (norm-sim s)]
+    (if (< (count n) 3) #{n} (set (map #(apply str %) (partition 3 1 n))))))
+
+(defn- jaccard [a b]
+  (let [u (count (set/union a b))]
+    (if (zero? u) 0.0 (/ (double (count (set/intersection a b))) u))))
+
+(defn- near-dup? [a b]
+  (and (>= (count (norm-sim a)) min-cluster-len)
+       (>= (count (norm-sim b)) min-cluster-len)
+       (>= (jaccard (trigrams a) (trigrams b)) sim-threshold)))
+
+(defn- cluster-values
+  "Group near-duplicate string values. Returns an ordered seq of
+   {:rep <longest member> :members [values…]} in first-seen order."
+  [values]
+  (reduce
+   (fn [clusters v]
+     (if-let [c (first (filter #(near-dup? (:rep %) v) clusters))]
+       (mapv (fn [x] (if (identical? x c)
+                       (let [ms (conj (:members x) v)] {:members ms :rep (apply max-key count ms)})
+                       x))
+             clusters)
+       (conj clusters {:rep v :members [v]})))
+   [] values))
+
+(defn- dup-marker [c] (when (> (count (:members c)) 1)
+                        (dim (str "  (+" (dec (count (:members c))) " near-identical)"))))
+
 (defn- rel-age [today ds]                       ;; "today" / "1 day ago" / "N days ago"
   (try (let [n (.between ChronoUnit/DAYS (LocalDate/parse ds) today)]
          (cond (<= n 0) "today" (= n 1) "1 day ago" :else (str n " days ago")))
@@ -550,15 +587,21 @@
         (run! println (wrap (str "    " (bold (ent-label s)) " " (dim (pred-label p)) ": ") "        "
                             (md->ansi v)))))))
 
-(defn tensions [& _]
+(defn tensions [& args]
   (need-space!)
-  (let [ts (filter #(= :k/tension (second %)) @facts)
-        cn (count (filter #(= :k/caution (second %)) @facts))]
+  (let [verbatim? (some #{"--verbatim"} args)
+        ts (filter #(= :k/tension (second %)) @facts)
+        cn (count (filter #(= :k/caution (second %)) @facts))
+        by-subj (group-by first ts)]
     (println (str (bold "Tensions") " (" (count ts) " · " cn " cautions):"))
-    (doseq [[s _ v] ts]
+    (doseq [[s facts*] by-subj
+            :let [vals (map #(nth % 2) facts*)
+                  clusters (if verbatim? (map (fn [v] {:rep v :members [v]}) vals)
+                               (cluster-values vals))]
+            c clusters]
       (println)
-      (println (str "● " (bold (ent-label s))))
-      (run! println (wrap "    " "    " (md->ansi v))))))
+      (println (str "● " (bold (ent-label s)) (when-not verbatim? (dup-marker c))))
+      (run! println (wrap "    " "    " (md->ansi (:rep c)))))))
 
 (defn insights [& _]
   (need-space!)
@@ -624,4 +667,4 @@
   (println (str "usage: weave [register <path>|init <dir>|where|overview|topics [--all]|"
                 "journal [--brief|--all]|recap [--all]|check|divergence <dirA> <dirB>]\n"
                 "             KB views: view <ent>|neighbors <ent> [--depth N]|find <text>|"
-                "tensions|insights|hubs [--top N]|predicates")))
+                "tensions|insights|hubs [--top N]|predicates   [--verbatim: don't cluster near-dups]")))

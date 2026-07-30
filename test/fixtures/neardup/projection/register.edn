@@ -1,0 +1,7 @@
+{:version 1
+ :concepts
+ [{:id :k/label   :label "label"   :definition "Human-readable name of an entity."}
+  {:id :k/source  :label "source"  :definition "Journal source binding (path within the space)."}
+  {:id :k/tension :label "tension" :definition "A deliberately unresolved two-sided contradiction."}
+  {:id :k/caution :label "caution" :definition "A single-sided caveat/nuance."}]
+ :contexts []}
