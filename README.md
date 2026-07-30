@@ -40,6 +40,7 @@ weave tensions                              # preserved contradictions
 weave insights                              # AI-inferred insights (survivors + rejects)
 weave hubs [--top N]                        # entities by connectivity (centrality)
 weave predicates                            # register vocabulary + usage counts
+weave <view> --verbatim                     # don't cluster near-duplicate values
 ```
 
 Requires [babashka](https://babashka.org) (`bb`) on the PATH. Install with `./install.sh`
