@@ -104,7 +104,10 @@
   (t "default shows 2 tension entries"     (= 2 (count (re-seq #"(?m)^● " d))))
   (t "--verbatim shows all 4, no marker"   (and (= 4 (count (re-seq #"(?m)^● " v)))
                                                 (not (has? v "near-identical"))))
-  (t "check stays green on the fixture"    (has? (weave "neardup" "check") "No violations")))
+  (t "check stays green on the fixture"    (has? (weave "neardup" "check") "No violations"))
+  (t "view collapses near-dup summaries"      (has? (weave "neardup" "view" ":demo") "(+1 near-identical)"))
+  (t "view --verbatim expands summaries"      (not (has? (weave "neardup" "view" ":demo" "--verbatim") "near-identical")))
+  (t "insights collapses near-dup claims"     (has? (weave "neardup" "insights") "(+1 near-identical)")))
 
 (println)
 (if (zero? @failures)

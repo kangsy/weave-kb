@@ -3,5 +3,7 @@
  [{:id :k/label   :label "label"   :definition "Human-readable name of an entity."}
   {:id :k/source  :label "source"  :definition "Journal source binding (path within the space)."}
   {:id :k/tension :label "tension" :definition "A deliberately unresolved two-sided contradiction."}
-  {:id :k/caution :label "caution" :definition "A single-sided caveat/nuance."}]
+  {:id :k/caution :label "caution" :definition "A single-sided caveat/nuance."}
+  {:id :k/summary :label "summary" :definition "Grounded description of an entity from source prose."}
+  {:id :k/inferred-across :label "inferred-across" :definition "AI-synthesized cross-map insight (provenance marker on an :i-* entity)."}]
  :contexts []}

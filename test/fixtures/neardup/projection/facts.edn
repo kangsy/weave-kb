@@ -3,4 +3,10 @@
   [:demo :k/tension "Public label is 'enterprise SaaS platform' vs internal reality that the business is service-dominant (~90% of revenue)."]
   [:demo :k/tension "Label says 'enterprise SaaS platform', but internally the business is service-dominant (~90% of revenue)."]
   [:demo :k/tension "The 'enterprise SaaS platform' public label sits against an internal service-dominant reality (~90% service revenue)."]
-  [:demo :k/tension "Marketing claims 'no coding skills' while the internal readiness note says complex flows are really low-code and need coding."]]}
+  [:demo :k/tension "Marketing claims 'no coding skills' while the internal readiness note says complex flows are really low-code and need coding."]
+  [:demo :k/summary "A no-code platform for building and running digital onboarding and document workflows for regulated industries."]
+  [:demo :k/summary "A no-code platform to build and run digital onboarding and document workflows aimed at regulated industries."]
+  [:i-a :k/label "Insight A"]
+  [:i-a :k/inferred-across "The service-dominant revenue mix sits in tension with the SaaS-platform public label."]
+  [:i-b :k/label "Insight B"]
+  [:i-b :k/inferred-across "The revenue mix is service-dominant, which is in tension with the platform's public SaaS label."]]}

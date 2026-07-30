@@ -525,7 +525,8 @@
 
 (defn view [& args]
   (need-space!)
-  (let [e (resolve-ent (first args))]
+  (let [e (resolve-ent (first args))
+        verbatim? (some #{"--verbatim"} args)]
     (if-not e
       (println (dim (str "No entity for: " (first args) "  (tip: `weave find <text>`)")))
       (let [out    (remove #(= :k/label (second %)) (filter #(= e (first %)) @facts))
@@ -540,9 +541,9 @@
           (when (seq shorts)
             (run! println (wrap (str "  " (bold (pred-label p)) ": ") "      "
                                 (str/join " · " (map vstr shorts)))))
-          (doseq [lv longs]
-            (println (str "  " (bold (pred-label p)) ":"))
-            (run! println (wrap "      " "      " (md->ansi lv)))))
+          (doseq [c (if verbatim? (map (fn [v] {:rep v :members [v]}) longs) (cluster-values longs))]
+            (println (str "  " (bold (pred-label p)) ":" (when-not verbatim? (dup-marker c))))
+            (run! println (wrap "      " "      " (md->ansi (:rep c))))))
         (when (seq incm)
           (println)
           (println (dim "  ← Backlinks"))
@@ -603,23 +604,32 @@
       (println (str "● " (bold (ent-label s)) (when-not verbatim? (dup-marker c))))
       (run! println (wrap "    " "    " (md->ansi (:rep c)))))))
 
-(defn insights [& _]
+(defn insights [& args]
   (need-space!)
-  (let [surv (entities-with :k/inferred-across)
+  (let [verbatim? (some #{"--verbatim"} args)
+        surv (entities-with :k/inferred-across)
         rej  (entities-with :k/rejected-inference)
-        show (fn [e claim]
-               (println)
-               (println (str "● " (bold (ent-label e))))
-               (run! println (wrap "    " "    " (md->ansi claim)))
-               (when-let [g (seq (o-all e :k/grounded-in))]
-                 (println (dim (str "    ⇒ grounded-in: " (str/join ", " (map vstr g))))))
-               (when-let [c (o e :k/confidence)]
-                 (run! println (wrap (dim "    conf: ") "          " c))))]
+        render (fn [ents claim-pred show-extra?]
+                 (let [claim-of (fn [e] (o e claim-pred))
+                       owner-of (fn [claim] (first (filter #(= (claim-of %) claim) ents)))
+                       clusters (if verbatim?
+                                  (map (fn [e] {:rep (claim-of e) :members [e]}) ents)
+                                  (cluster-values (map claim-of ents)))]
+                   (doseq [c clusters
+                           :let [e (owner-of (:rep c))]]
+                     (println)
+                     (println (str "● " (bold (ent-label e)) (when-not verbatim? (dup-marker c))))
+                     (run! println (wrap "    " "    " (md->ansi (:rep c))))
+                     (when show-extra?
+                       (when-let [g (seq (o-all e :k/grounded-in))]
+                         (println (dim (str "    ⇒ grounded-in: " (str/join ", " (map vstr g))))))
+                       (when-let [cf (o e :k/confidence)]
+                         (run! println (wrap (dim "    conf: ") "          " cf)))))))]
     (println (str (bold "Insights") " — survived (" (count surv) "):"))
-    (doseq [e surv] (show e (o e :k/inferred-across)))
+    (render surv :k/inferred-across true)
     (println)
     (println (str (bold "— rejected (kept as judgment artifact)") " (" (count rej) "):"))
-    (doseq [e rej] (show e (o e :k/rejected-inference)))))
+    (render rej :k/rejected-inference false)))
 
 (defn hubs [& args]
   (need-space!)
