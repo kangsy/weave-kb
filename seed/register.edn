@@ -2,7 +2,7 @@
 ;; Domain-neutral only. No contexts (those are inherently space-specific:
 ;; your devices, people, places). A space grows its register emergently from here.
 
-{:version 1
+{:version 2
  :concepts
  [{:id :k/part-of
    :label "part-of"
@@ -41,10 +41,10 @@
    :label "structure-review"
    :definition "Latest structural judgment for an entity: keep or change the current structure (flat vs umbrella, actions vs subprojects). A short verdict line '<date> · kept|changed · <brief reason>'; the full reasoning lives in the journal. An LLM judgment made during re-projection, never a rule — recorded so deliberate continuity is as visible as change. `topics` surfaces it; a stale review date passively flags a candidate."}
 
-  ;; --- KB-Backbone (Wissensbasis-Nutzung): Spannungen, Nuancen, Insight-Schicht ---
+  ;; --- KB backbone (knowledge-base use): tensions, cautions, insight layer ---
   {:id :k/tension
    :label "tension"
-   :definition "A deliberately UNRESOLVED contradiction/tension — outward vs internal reading, or two source statements that disagree. Kept, not resolved. Attach to a representative subject entity. When the source itself flags it, it is :projected-from (faithful), not inferred."}
+   :definition "A deliberately UNRESOLVED contradiction between TWO distinct source statements that cannot both hold as stated — e.g. two speakers who disagree, or one source asserting an outward claim AND a conflicting internal reality. OPERATIONAL TEST: there must be a SECOND, opposing statement IN the source; if only ONE statement exists — even a hedged, negative, or evaluative one (e.g. 'sounds good but shaky') — it is NOT a tension: use :k/caution. A single critical or nuanced opinion is a caution, never a tension. Kept, not resolved; attach to a representative subject entity. Faithful (:projected-from) when the source itself carries both sides."}
   {:id :k/caution
    :label "caution"
    :definition "A caveat/nuance about an entity, incl. a source's own confidence/status tags carried as CONTENT (never as system trust)."}
@@ -56,7 +56,7 @@
    :definition "An insight rests on this object entity/fact (traceability = groundedness). Value is an entity handle; cite specific triples in :k/confidence text. Empty / model-prior-only ⇒ discard."}
   {:id :k/confidence
    :label "confidence"
-   :definition "Confidence of an inference + adversarial-check result (e.g. hoch/plausibel, or 'VERWORFEN: <reason>'). Content, not system trust."}
+   :definition "Confidence of an inference + adversarial-check result (e.g. high/plausible, or 'REJECTED: <reason>'). Content, not system trust."}
   {:id :k/rejected-inference
    :label "rejected-inference"
    :definition "PROVENANCE MARKER on a reified insight that did NOT survive the adversarial check — kept as a judgment artifact (not discarded). Value = the rejected claim; the reason lives in :k/confidence."}]
