@@ -307,6 +307,7 @@
 (defn check []
   (need-space!)
   (let [problems (atom [])
+        hints    (atom [])
         cbi (concept-by-id) xbi (context-by-id)]
     (doseq [[s p v] @facts]
       (when-not (cbi p)
@@ -318,7 +319,7 @@
         (let [d    (LocalDate/parse (o e :k/last-touched))
               days (.between ChronoUnit/DAYS d today)]
           (when (> days 21)
-            (swap! problems conj (str "Stale: " e " not touched for " days " days (" (o e :k/last-touched) ")."))))))
+            (swap! hints conj (str "Stale: " e " not touched for " days " days (" (o e :k/last-touched) ")."))))))
     ;; --- entity model: part-of, genealogy, source binding (spec §5) ------
     (let [subj    (set (map first @facts))
           known?  (fn [e] (subj e))
@@ -349,7 +350,11 @@
     (if (seq @problems)
       (do (println (str "✗ " (count @problems) " finding(s):"))
           (doseq [p @problems] (println (str "   - " p))))
-      (println "✓ No violations. Fact base coherent against the register."))))
+      (println "✓ No violations. Fact base coherent against the register."))
+    (when (seq @hints)
+      (println (str "ℹ " (count @hints) " hint(s):"))
+      (doseq [h @hints] (println (str "   - " h))))
+    (when (seq @problems) (System/exit 1))))
 
 ;; --- divergence (explicit two-dir op; not space-bound) ----------------------
 (defn- load-proj [dir]

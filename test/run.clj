@@ -40,6 +40,14 @@
   (doseq [need ["Dangling part-of" "cycle" "nowhere" "open next-action" "Journal source missing"]]
     (t (str "reports: " need) (has? o need))))
 
+(println "check (stale is a hint, not a violation):")
+(let [{:keys [out exit]} (p/sh ["bb" "weave" "--space" "test/fixtures/stale" "check"])]
+  (t "stale entity reported"           (has? out "Stale: :old"))
+  (t "stale alone keeps check green"   (has? out "No violations"))
+  (t "stale alone exits 0"             (zero? exit)))
+(let [{:keys [exit]} (p/sh ["bb" "weave" "--space" "test/fixtures/drift" "check"])]
+  (t "violations exit non-zero"        (= 1 exit)))
+
 (println "journal (genealogy):")
 (let [o (weave "genealogy" "journal")]
   (t "journal lists Tulips" (has? o "Tulips"))

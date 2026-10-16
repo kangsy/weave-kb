@@ -1,0 +1,5 @@
+{:version 1
+ :concepts
+ [{:id :k/label        :label "label"        :definition "Human-readable name of an entity."}
+  {:id :k/last-touched :label "last-touched" :definition "Date of the last substantial progress."}]
+ :contexts []}

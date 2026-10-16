@@ -114,7 +114,8 @@ weave divergence <dirA> <dirB>       # contrast two projections
      history). This is the prose that `weave recap` shows; if it is missing, recap falls
      back mechanically to `:k/blocked-by`/`:k/next-action` (as a list when there are many actions).
 
-4. **Check.** `weave check` — must return `✓`. Fix findings before the commit.
+4. **Check.** `weave check` — must return `✓` (exit 0). Fix findings before the commit.
+   Hints (`ℹ`, e.g. stale entities) do not block: they only go away through real work.
 
 5. **Commit and push immediately.** Journal + projection together, a meaningful message,
    then `git push`. **An unpushed commit is not a sync** — never leave it unpushed.

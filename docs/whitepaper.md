@@ -251,7 +251,7 @@ reading of the journal. Multiple admissible readings may coexist.
 **Correctness and coherence** are the real requirements. When a projection violates them,
 that is an *operational* failure (a broken extraction), not a conceptual one — and it is
 **caught, not assumed**: a `check` layer verifies invariants (unknown predicates, dangling
-references, staleness). Coherence is verified, not hoped for. This directly answers the
+references) and flags staleness as a hint. Coherence is verified, not hoped for. This directly answers the
 best-documented failure modes of LLM-driven knowledge-graph construction — schema drift,
 non-determinism, and hallucinated predicates (2025 survey, arXiv:2510.20345).
 
