@@ -527,8 +527,8 @@ concepts.
 - Nehmé, Valtchev, Rouane-Hacene & Godin (2005), ICFCA — incremental lattice maintenance.
 - Rouane-Hacene et al. (2008) — Relational Concept Analysis (RCA).
 - Snelting & Tip (1998/2000); Godin et al. (1993) — FCA-based class-hierarchy reengineering.
-- Guenoune et al. (2025), CONCEPTS — FCA/RCA lacks common-sense knowledge for naming/relevance.
-- Gutierrez et al. (2025), CONCEPTS — LLM-as-explainer for RCA artifacts.
+- Guenoune et al. (2025), *LLM-Assisted Relational Concept Analysis for Class Model Restructuring*, CONCEPTS 2025 (Cluj-Napoca), Springer LNAI, doi:10.1007/978-3-032-03364-2_7 — FCA/RCA lacks common-sense knowledge for naming/relevance.
+- Gutierrez et al. (2025), *Empowering Relational Concept Analysis Using Large Language Model Knowledge Delivery*, CONCEPTS 2025 (Cluj-Napoca), Springer LNAI, doi:10.1007/978-3-032-03364-2_8 — LLM-as-explainer for RCA artifacts.
 - Dürrschnabel, Hanika & Stubbemann (2021), *FCA2VEC*.
 
 **Theory of meaning / representation**
